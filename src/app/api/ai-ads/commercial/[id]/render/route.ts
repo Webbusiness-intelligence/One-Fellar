@@ -80,7 +80,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         account_id: ctx.accountId,
         created_by: ctx.userId,
         type: "video",
-        prompt: (scene.summary as string) ?? "Scene",
+        prompt: (scene.prompt as string) ?? "Scene",
         status: "completed",
         model: "commercial-scene",
       })
