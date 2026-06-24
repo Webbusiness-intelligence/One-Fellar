@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus } from "@/types";
-import { Search, ChevronDown } from "lucide-react";
+import { Search, ChevronDown, UserPlus } from "lucide-react";
+import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { Input } from "@/components/ui/input";
 import {
@@ -153,6 +154,18 @@ export function ConversationList({
     // the single pane showing; fixed 320px on desktop where it shares the
     // row with the thread + contact sidebar.
     <div className="flex h-full w-full flex-col border-r border-border bg-card lg:w-80">
+      {/* Header: title + access contacts to start a new message */}
+      <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+        <span className="text-sm font-semibold text-foreground">Chats</span>
+        <Link
+          href="/contacts"
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground transition hover:brightness-95"
+          title="Open contacts to message someone"
+        >
+          <UserPlus className="h-3.5 w-3.5" /> New message
+        </Link>
+      </div>
+
       {/* Search + Filter */}
       <div className="space-y-2 border-b border-border p-3">
         <div className="relative">
