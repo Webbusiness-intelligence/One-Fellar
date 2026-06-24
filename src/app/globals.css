@@ -1,0 +1,394 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  /* Secondary card surface (tile / hover backgrounds) and the accent
+   * extras the Settings redesign leans on. The raw --primary-* vars
+   * already exist per-accent below; these mappings expose them (and
+   * --card-2) as Tailwind utilities: bg-card-2, bg-primary-soft,
+   * bg-primary-soft-2, hover:bg-primary-hover. */
+  --color-card-2: var(--card-2);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-2: var(--primary-soft-2);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ============================================================
+ * THEMING — two orthogonal dimensions
+ *
+ *   1. MODE   (light / dark)  → neutral surfaces. Selected with
+ *      `document.documentElement.dataset.mode`. Defaults to dark.
+ *   2. ACCENT (violet / …)    → the primary color only. Selected
+ *      with `document.documentElement.dataset.theme`.
+ *
+ * The two compose: any accent works in either mode. Neutral
+ * tokens (background / card / border / muted / sidebar surfaces /
+ * neutral charts / radius) live in the MODE blocks below; accent
+ * tokens (--primary*, --ring, --chart-1, --sidebar-primary*,
+ * --sidebar-ring) live in the ACCENT blocks. They set disjoint
+ * variables, so cascade order between them doesn't matter.
+ *
+ * `:root` carries the dark-mode + violet defaults so a visitor
+ * renders correctly before JS runs; the boot script in
+ * layout.tsx replays the saved mode + accent before first paint.
+ *
+ * The three `--primary-*` extras (hover / soft / soft-2) feed
+ * hovered primary buttons and tinted-primary surfaces (sidebar
+ * active pill, validation badges).
+ *
+ * Token shapes come straight from the design handoff at
+ * project/Color Themes.html — change one, change the other.
+ * ============================================================ */
+
+/* ---- MODE: neutral surfaces ---- */
+
+:root,
+html[data-mode="dark"] {
+  color-scheme: dark;
+  --background: #101214;
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.18 0.01 260);
+  --card-2: oklch(0.205 0.01 260);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.18 0.01 260);
+  --popover-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.22 0.01 260);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.22 0.01 260);
+  --muted-foreground: oklch(0.65 0.01 260);
+  --accent: oklch(0.22 0.01 260);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.28 0.01 260);
+  --input: oklch(0.28 0.01 260);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.16 0.01 260);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.22 0.01 260);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.28 0.01 260);
+}
+
+/* Scoped dark canvas for Ad Studio — forces premium dark surfaces regardless of
+ * the app's light/dark mode, so the studio reads like a high-end creative tool. */
+.studio-dark {
+  color-scheme: dark; /* native dropdowns / scrollbars render dark, not white */
+  --background: #101214;
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.185 0.014 265);
+  --card-2: oklch(0.21 0.014 265);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.185 0.014 265);
+  --popover-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.23 0.014 265);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.23 0.014 265);
+  --muted-foreground: oklch(0.68 0.012 265);
+  --accent: oklch(0.24 0.016 265);
+  --accent-foreground: oklch(0.985 0 0);
+  --border: oklch(0.3 0.014 265);
+  --input: oklch(0.3 0.014 265);
+  --ring: oklch(0.55 0.02 265);
+}
+
+/* Native <select> dropdown lists paint white-on-white in dark contexts on some
+ * platforms even with color-scheme:dark — force dark option rows explicitly. */
+.studio-dark select option,
+.studio-dark select optgroup,
+html[data-mode="dark"] select option,
+html[data-mode="dark"] select optgroup {
+  background-color: #1b1e24;
+  color: #f5f5f5;
+}
+
+/* Premium "generating" animation for Ad Studio image placeholders — a glowing,
+ * breathing tile with a rotating light sweep and a shimmer pass. */
+@keyframes ad-gen-sweep {
+  0% { transform: translateX(-130%) skewX(-12deg); }
+  100% { transform: translateX(130%) skewX(-12deg); }
+}
+@keyframes ad-gen-rotate { to { transform: rotate(1turn); } }
+@keyframes ad-gen-breathe {
+  0%, 100% {
+    box-shadow: inset 0 0 0 1px oklch(0.6 0.16 285 / 0.18), 0 0 22px oklch(0.55 0.2 285 / 0.12);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px oklch(0.68 0.2 285 / 0.5), 0 0 46px oklch(0.62 0.22 285 / 0.34);
+  }
+}
+.ad-gen-tile {
+  background:
+    radial-gradient(120% 110% at 50% 118%, oklch(0.32 0.09 280 / 0.55), transparent 62%),
+    radial-gradient(120% 110% at 50% -18%, oklch(0.3 0.07 300 / 0.5), transparent 62%),
+    oklch(0.16 0.02 265);
+  animation: ad-gen-breathe 2.6s ease-in-out infinite;
+}
+.ad-gen-rotor {
+  background: conic-gradient(from 0deg, transparent 0deg, oklch(0.7 0.2 285 / 0.4) 60deg, transparent 150deg);
+  animation: ad-gen-rotate 5s linear infinite;
+}
+.ad-gen-sweep {
+  background: linear-gradient(100deg, transparent 35%, oklch(0.9 0.05 285 / 0.22) 50%, transparent 65%);
+  animation: ad-gen-sweep 2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ad-gen-tile, .ad-gen-rotor, .ad-gen-sweep { animation: none; }
+}
+
+html[data-mode="light"] {
+  color-scheme: light;
+  /* Matches Supabase project-overview canvas exactly (#fcfcfc) —
+   * clean neutral near-white; white cards/surfaces sit on top. */
+  --background: #fcfcfc;
+  --foreground: oklch(0.31 0.012 260);
+  --card: oklch(1 0 0);
+  --card-2: oklch(0.985 0.002 260);
+  --card-foreground: oklch(0.31 0.012 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.31 0.012 260);
+  --secondary: oklch(0.967 0.003 260);
+  --secondary-foreground: oklch(0.25 0.01 260);
+  --muted: oklch(0.967 0.003 260);
+  --muted-foreground: oklch(0.52 0.015 260);
+  --accent: oklch(0.96 0.004 260);
+  --accent-foreground: oklch(0.25 0.01 260);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0.004 260);
+  --input: oklch(0.922 0.004 260);
+  --chart-2: oklch(0.6 0.1 260);
+  --chart-3: oklch(0.7 0.06 260);
+  --chart-4: oklch(0.8 0.04 260);
+  --chart-5: oklch(0.87 0.03 260);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.985 0.002 260);
+  --sidebar-foreground: oklch(0.31 0.012 260);
+  --sidebar-accent: oklch(0.96 0.004 260);
+  --sidebar-accent-foreground: oklch(0.25 0.01 260);
+  --sidebar-border: oklch(0.922 0.004 260);
+}
+
+/* ---- ACCENT: primary color ---- */
+
+:root,
+html[data-theme="violet"] {
+  --primary: oklch(0.526 0.247 293);
+  --primary-foreground: oklch(0.985 0 0);
+  --primary-hover: oklch(0.6 0.22 293);
+  --primary-soft: oklch(0.526 0.247 293 / 0.12);
+  --primary-soft-2: oklch(0.526 0.247 293 / 0.2);
+  --ring: oklch(0.526 0.247 293);
+  --chart-1: oklch(0.526 0.247 293);
+  --sidebar-primary: oklch(0.526 0.247 293);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.526 0.247 293);
+}
+
+html[data-theme="emerald"] {
+  /* Brighter, fresher mint to match Supabase's button green. Buttons
+   * pair this with a dark-green foreground (not near-black) so the
+   * label reads neat rather than heavy. */
+  --primary: oklch(0.72 0.16 163);
+  --primary-foreground: oklch(0.24 0.05 163);
+  --primary-hover: oklch(0.67 0.16 163);
+  --primary-soft: oklch(0.72 0.16 163 / 0.14);
+  --primary-soft-2: oklch(0.72 0.16 163 / 0.24);
+  --ring: oklch(0.72 0.16 163);
+  --chart-1: oklch(0.72 0.16 163);
+  --chart-2: oklch(0.7 0.14 195);
+  --sidebar-primary: oklch(0.72 0.16 163);
+  --sidebar-primary-foreground: oklch(0.24 0.05 163);
+  --sidebar-ring: oklch(0.72 0.16 163);
+}
+
+html[data-theme="cobalt"] {
+  --primary: oklch(0.585 0.2 254);
+  --primary-foreground: oklch(0.985 0 0);
+  --primary-hover: oklch(0.66 0.18 254);
+  --primary-soft: oklch(0.585 0.2 254 / 0.12);
+  --primary-soft-2: oklch(0.585 0.2 254 / 0.22);
+  --ring: oklch(0.585 0.2 254);
+  --chart-1: oklch(0.585 0.2 254);
+  --chart-2: oklch(0.7 0.15 220);
+  --sidebar-primary: oklch(0.585 0.2 254);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.585 0.2 254);
+}
+
+html[data-theme="amber"] {
+  --primary: oklch(0.745 0.16 65);
+  --primary-foreground: oklch(0.18 0.03 65);
+  --primary-hover: oklch(0.8 0.15 65);
+  --primary-soft: oklch(0.745 0.16 65 / 0.12);
+  --primary-soft-2: oklch(0.745 0.16 65 / 0.22);
+  --ring: oklch(0.745 0.16 65);
+  --chart-1: oklch(0.745 0.16 65);
+  --chart-2: oklch(0.7 0.15 35);
+  --sidebar-primary: oklch(0.745 0.16 65);
+  --sidebar-primary-foreground: oklch(0.18 0.03 65);
+  --sidebar-ring: oklch(0.745 0.16 65);
+}
+
+html[data-theme="rose"] {
+  --primary: oklch(0.645 0.22 16);
+  --primary-foreground: oklch(0.985 0 0);
+  --primary-hover: oklch(0.71 0.2 16);
+  --primary-soft: oklch(0.645 0.22 16 / 0.12);
+  --primary-soft-2: oklch(0.645 0.22 16 / 0.22);
+  --ring: oklch(0.645 0.22 16);
+  --chart-1: oklch(0.645 0.22 16);
+  --chart-2: oklch(0.7 0.18 340);
+  --sidebar-primary: oklch(0.645 0.22 16);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.645 0.22 16);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@layer components {
+  /* Small uppercase tracked label — the Supabase "GITHUB" / "LAST
+   * MIGRATION" eyebrow. Pair with a value below it in stat/object cards. */
+  .eyebrow {
+    font-size: 0.6875rem; /* 11px */
+    line-height: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  /* ---- Ad Studio — generation motion ---- */
+  .ad-shimmer {
+    background: linear-gradient(
+      100deg,
+      var(--muted) 30%,
+      var(--card-2) 48%,
+      var(--card) 56%,
+      var(--muted) 72%
+    );
+    background-size: 220% 100%;
+    animation: ad-shimmer 1.8s ease-in-out infinite;
+  }
+  /* Animated emerald gradient — used as a 1px border on "generating" tiles
+   * (wrap with p-px and an inner rounded surface). */
+  .ad-grad-border {
+    background: linear-gradient(
+      120deg,
+      oklch(0.72 0.16 163),
+      oklch(0.83 0.12 188),
+      oklch(0.72 0.16 163)
+    );
+    background-size: 200% 100%;
+    animation: ad-gradient-pan 2.4s linear infinite;
+  }
+  /* Premium CTA: emerald gradient with a slow sheen. */
+  .ad-cta {
+    background: linear-gradient(120deg, oklch(0.72 0.16 163), oklch(0.8 0.13 186));
+    color: oklch(0.21 0.05 163);
+    transition:
+      filter 0.18s ease,
+      transform 0.08s ease,
+      box-shadow 0.18s ease;
+  }
+  .ad-cta:hover {
+    filter: brightness(1.05);
+    box-shadow: 0 6px 20px oklch(0.72 0.16 163 / 0.35);
+  }
+  .ad-cta:active {
+    transform: translateY(1px);
+  }
+  .ad-cta:disabled {
+    filter: saturate(0.6) opacity(0.7);
+    box-shadow: none;
+  }
+  /* Staggered blur-up entrance for generated results. */
+  .ad-reveal {
+    animation: ad-reveal 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes ad-shimmer {
+  0% {
+    background-position: 0% 0;
+  }
+  100% {
+    background-position: -220% 0;
+  }
+}
+@keyframes ad-gradient-pan {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+@keyframes ad-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
