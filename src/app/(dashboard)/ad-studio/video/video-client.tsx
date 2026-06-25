@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, Plus, Loader2, Trash2, X, ChevronLeft, ChevronRight, Volume2, VolumeX } from "lucide-react";
+import { Sparkles, Plus, Loader2, Trash2, X, ChevronLeft, ChevronRight, Volume2, VolumeX, Scissors } from "lucide-react";
 import { MentionTextarea } from "../mention-textarea";
 import { GeneratingPanel } from "../generating";
 
@@ -35,12 +35,13 @@ const VIDEO_STEPS = [
 export function VideoClient({ initial }: { initial: VideoItem[] }) {
   const [items, setItems] = useState<VideoItem[]>(initial);
   const [prompt, setPrompt] = useState("");
-  const [engine, setEngine] = useState<string>("seedance-pro");
-  const [resolution, setResolution] = useState("1080p");
+  const [engine, setEngine] = useState<string>("seedance-fast");
+  const [resolution, setResolution] = useState("720p");
   const [duration, setDuration] = useState(5);
   const [audio, setAudio] = useState(true);
   const [count, setCount] = useState(1);
   const [cinematic, setCinematic] = useState(true);
+  const [cuts, setCuts] = useState(false);
   const [mood, setMood] = useState("auto");
   const [file, setFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
@@ -65,9 +66,16 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
   }, [engine]);
 
   const engineSec = ENGINES.find((e) => e.id === engine)?.sec ?? 0.168;
-  const credits = Math.round(engineSec * duration * count * 100);
   const supportsRes = engine.startsWith("seedance");
   const supportsAudio = engine !== "kling-turbo";
+  // Seedance is billed by pixels × frames, so resolution scales the cost (the base
+  // rate is for 720p). Kling is flat per-second. Plus the GPT-Image-2 keyframe (~10cr)
+  // per take, except Seedance reference-to-video (no keyframe).
+  const RES_MULT: Record<string, number> = { "480p": 0.45, "720p": 1, "1080p": 2.25, "4k": 5.1 };
+  const resMult = supportsRes ? RES_MULT[resolution] ?? 1 : 1;
+  const usesReference = supportsRes && refs.length > 0;
+  const perTake = engineSec * duration * resMult * 100 + (usesReference ? 0 : 10);
+  const credits = Math.round(perTake * count);
   const soulHandles = new Set(souls.map((s) => s.handle.toLowerCase()));
   const PILL =
     "cursor-pointer appearance-none rounded-lg border border-white/10 bg-white/5 py-1.5 pl-2.5 pr-2 text-[12px] text-foreground/80 outline-none transition-colors hover:border-white/25";
@@ -113,6 +121,7 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
     setCreating(true);
     try {
       const fd = new FormData();
+      fd.set("kind", "video");
       fd.set("prompt", prompt.trim());
       fd.set("engine", engine);
       fd.set("duration", String(duration));
@@ -121,16 +130,45 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
       fd.set("count", String(count));
       fd.set("cinematic", String(cinematic));
       if (cinematic) fd.set("mood", mood);
+      fd.set("cuts", String(cuts && cinematic));
       if (refs.length) fd.set("soulIds", JSON.stringify(refs.map((r) => r.id)));
       if (file) fd.set("file", file);
-      const res = await fetch("/api/ai-ads/video/create", { method: "POST", body: fd });
-      const json = await res.json();
-      if (!res.ok || !json.videos) throw new Error(json.error || "Failed");
-      setItems((xs) => [...(json.videos as VideoItem[]), ...xs]);
-      setPrompt("");
-      setFile(null);
-      setRefs([]);
-      setAtQuery(null);
+      // Enqueue → the worker renders → poll for the result (no 3-min held request).
+      const res = await fetch("/api/ai-ads/jobs", { method: "POST", body: fd });
+      const raw = await res.text();
+      let j: { jobId?: string; error?: string } | null = null;
+      try {
+        j = JSON.parse(raw);
+      } catch {
+        j = null;
+      }
+      if (res.status === 402) throw new Error("You're out of credits — top up to generate.");
+      if (!res.ok || !j?.jobId) throw new Error((j && j.error) || "Couldn't start the render");
+
+      const started = Date.now();
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 3000));
+        if (Date.now() - started > 15 * 60 * 1000) throw new Error("Timed out waiting for the render");
+        const sres = await fetch(`/api/ai-ads/jobs/${j.jobId}`);
+        const sraw = await sres.text();
+        let s: { status?: string; error?: string; assets?: VideoItem[] } | null = null;
+        try {
+          s = JSON.parse(sraw);
+        } catch {
+          continue; // a transient blip — keep polling
+        }
+        if (!s) continue;
+        if (s.status === "completed") {
+          const vids = (s.assets ?? []).filter((a) => (a as { type?: string }).type === "video");
+          setItems((xs) => [...vids, ...xs]);
+          setPrompt("");
+          setFile(null);
+          setRefs([]);
+          setAtQuery(null);
+          break;
+        }
+        if (s.status === "failed") throw new Error(s.error || "The video didn't render");
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -325,23 +363,47 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
             Cinematic
           </button>
           {cinematic ? (
-            <select
-              value={mood}
-              onChange={(e) => setMood(e.target.value)}
-              title="Mood / style — Auto lets the director choose by scene"
-              className={PILL}
-            >
-              <option value="auto">Mood: Auto</option>
-              <option value="romantic">Romantic</option>
-              <option value="cinematic">Cinematic</option>
-              <option value="documentary">Documentary</option>
-              <option value="fashion">Fashion</option>
-              <option value="music video">Music video</option>
-              <option value="noir">Noir</option>
-              <option value="luxury">Luxury</option>
-              <option value="ugc">UGC / social</option>
-              <option value="commercial">Commercial / ad</option>
-            </select>
+            <>
+              <select
+                value={mood}
+                onChange={(e) => setMood(e.target.value)}
+                title="Mood / style — Auto lets the director choose by scene"
+                className={PILL}
+              >
+                <option value="auto">Mood: Auto</option>
+                <option value="romantic">Romantic</option>
+                <option value="cinematic">Cinematic</option>
+                <option value="documentary">Documentary</option>
+                <option value="fashion">Fashion</option>
+                <option value="music video">Music video</option>
+                <option value="noir">Noir</option>
+                <option value="luxury">Luxury</option>
+                <option value="ugc">UGC / social</option>
+                <option value="commercial">Commercial / ad</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => setCuts((v) => !v)}
+                title={
+                  cuts
+                    ? "Cut-to-cut on — renders multiple shots of the same subject and edits them together"
+                    : "Single continuous shot"
+                }
+                className={`flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[12px] transition-colors ${
+                  cuts
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Scissors className="size-4" />
+                Cuts
+              </button>
+              {cuts && duration < (engine === "kling-pro" ? 6 : engine === "kling-turbo" ? 10 : 8) ? (
+                <span className="text-[11px] text-amber-400/80">
+                  needs {engine === "kling-pro" ? "6s" : engine === "kling-turbo" ? "10s" : "8s"}+ for cuts
+                </span>
+              ) : null}
+            </>
           ) : null}
           <button
             type="button"

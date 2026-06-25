@@ -8,12 +8,16 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { randomUUID } from "node:crypto";
+import { writeFile, readFile, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
 import { supabaseAdmin } from "@/lib/automations/admin-client";
 import { renderSceneVideo, seedanceReferenceToVideo, type VideoEngine } from "@/lib/ai-ads/video-models";
 import { gptImageEdit, gptImageGenerate } from "@/lib/ai-ads/chat-models";
-import { directCinematic, type Subject } from "@/lib/ai-ads/cinematic-director";
+import { directCinematic, directCuts, type Subject } from "@/lib/ai-ads/cinematic-director";
+import { stitchClips } from "@/lib/ai-ads/video-stitch";
 
 const BUCKET = "ad-studio";
 const ENGINES: VideoEngine[] = ["kling-pro", "kling-turbo", "seedance-pro", "seedance-fast"];
@@ -50,6 +54,8 @@ export async function POST(req: Request) {
     // off = the user's raw prompt straight to the model.
     const cinematic = String(form.get("cinematic") ?? "true") !== "false";
     const mood = String(form.get("mood") ?? "auto").slice(0, 40);
+    // True cut-to-cut: render distinct shots and stitch them with cuts/transitions.
+    const cuts = String(form.get("cuts") ?? "false") === "true";
     const adMode =
       mood === "commercial" ||
       mood === "ugc" ||
@@ -96,6 +102,10 @@ export async function POST(req: Request) {
     // takes one start frame, so there we compose the subjects into a keyframe.
     const useReference = isSeedance && chosen.length > 0;
     const bitrate = cinematic ? "high" : "standard";
+    // Multi-shot needs the director, and the total must fit at least two engine-minimum
+    // shots (Seedance 4s, Kling-pro 3s, Kling-turbo 5s) — otherwise fall back to one clip.
+    const minShot = engine === "kling-pro" ? 3 : engine === "kling-turbo" ? 5 : 4;
+    const cutsActive = cuts && cinematic && duration >= minShot * 2;
 
     // @ImageN mapping used when cinematic is OFF (the director emits @ImageN itself via
     // `subjects` when ON).
@@ -163,25 +173,35 @@ export async function POST(req: Request) {
       const keyframePrompt =
         shot?.keyframePrompt ?? `${cleanPrompt}. No added text, captions or watermark.`;
 
+      console.log(
+        `[ai-ads/video/create] seed take#${variation} | engine:${engine} | useReference:${useReference} | subjects:${
+          subjects?.map((s) => `${s.tag}=${s.desc}`).join(", ") || "none"
+        }\n  VIDEO_PROMPT: ${videoPrompt}\n  KEYFRAME_PROMPT: ${keyframePrompt}\n  NEGATIVE: ${negativePrompt ?? "(none)"}`,
+      );
+
       // Start frame for image-to-video (reference mode needs none).
       let startUrl: string | null = uploadedStart;
       if (!useReference && !startUrl) {
         try {
           const out = soulUrls.length
-            ? await gptImageEdit({
+            ? // Souls → keep gpt-image-2: its multi-subject composition keeps each
+              // referenced character/product accurate in the start frame (worth the time).
+              await gptImageEdit({
                 prompt: `${keyframePrompt} Feature the provided reference subject(s) together, keeping each accurate and recognisable.`,
                 imageUrls: soulUrls,
                 format,
-                quality: "high",
+                quality: "medium",
                 num: 1,
                 model: "gpt-image-2",
               })
-            : await gptImageGenerate({
+            : // No souls → the keyframe is just a seed the video re-renders from, so use
+              // gpt-image-1.5 (~2 min faster than gpt-image-2) with no real quality loss.
+              await gptImageGenerate({
                 prompt: keyframePrompt,
                 format,
-                quality: "high",
+                quality: "medium",
                 num: 1,
-                model: "gpt-image-2",
+                model: "gpt-image-1.5",
               });
           if (out[0]) startUrl = await saveKeyframe(out[0]);
         } catch (e) {
@@ -274,10 +294,174 @@ export async function POST(req: Request) {
       return asset ? { id: asset.id as string, url: pub(path), label: summary, duration } : null;
     };
 
-    const results = await Promise.all(Array.from({ length: count }).map((_, i) => makeOne(i)));
+    // One full CUT-TO-CUT take: a hero base frame → re-framed per shot (same subject) →
+    // each shot rendered separately → stitched with cuts/transitions (ffmpeg).
+    const makeOneCuts = async (
+      variation: number,
+    ): Promise<{ id: string; url: string; label: string; duration: number } | null> => {
+      const seq = await directCuts({
+        prompt: cleanPrompt,
+        duration,
+        minShot,
+        aspect: format,
+        mode: adMode,
+        mood,
+        subjects,
+        variation,
+      });
+      // Hard cuts only — no dissolve/fade/whip between shots (user preference).
+      seq.shots.forEach((s) => {
+        s.transition = "cut";
+      });
+      console.log(
+        `[ai-ads/video/create] CUTS take#${variation} | ${seq.shots.length} shots | ${seq.shots
+          .map((s) => `${s.durationSec}s/${s.transition}`)
+          .join(", ")}`,
+      );
+
+      // Hero base frame (uploaded > souls-composed > generated). The base carries the
+      // subject + look; each shot re-frames it so every cut is the same subject.
+      let baseUrl: string | null = uploadedStart;
+      if (!baseUrl) {
+        try {
+          const out = soulUrls.length
+            ? await gptImageEdit({
+                prompt: `${seq.baseKeyframePrompt} Feature the provided reference subject(s) together, keeping each accurate and recognisable.`,
+                imageUrls: soulUrls,
+                format,
+                quality: "medium",
+                num: 1,
+                model: "gpt-image-2",
+              })
+            : await gptImageGenerate({
+                prompt: seq.baseKeyframePrompt,
+                format,
+                quality: "medium",
+                num: 1,
+                model: "gpt-image-1.5",
+              });
+          if (out[0]) baseUrl = await saveKeyframe(out[0]);
+        } catch (e) {
+          console.error("[ai-ads/video/create] cuts base frame failed:", e);
+        }
+      }
+      if (!baseUrl) return null;
+      const base = baseUrl;
+
+      // Per-shot start frames: re-frame the base (gpt-image-1.5 edit is fast and the base
+      // already holds the subject/souls, so it only changes framing/angle).
+      const starts = await Promise.all(
+        seq.shots.map(async (shot) => {
+          try {
+            const out = await gptImageEdit({
+              prompt: `${shot.keyframePrompt} Keep the SAME subject, face, wardrobe, lighting and colour grade as the reference image; change ONLY the framing, angle and composition. No added text.`,
+              imageUrls: [base],
+              format,
+              quality: "medium",
+              num: 1,
+              model: "gpt-image-1.5",
+            });
+            return (out[0] ? await saveKeyframe(out[0]) : null) ?? base;
+          } catch {
+            return base;
+          }
+        }),
+      );
+
+      // Render each shot (silent — audio is added at the final stage if ever needed).
+      const clipUrls = await Promise.all(
+        seq.shots.map((shot, i) =>
+          renderSceneVideo(engine, {
+            startImageUrl: starts[i],
+            prompt: `${seq.styleHeader}\n\n${shot.videoPrompt}`,
+            negativePrompt: seq.negativePrompt,
+            duration: shot.durationSec,
+            resolution,
+            audio: false,
+            bitrate,
+          }).catch((e) => {
+            console.error(`[ai-ads/video/create] cuts shot ${i} render failed:`, e);
+            return null;
+          }),
+        ),
+      );
+      if (clipUrls.some((u) => !u)) return null;
+
+      // Download shots, stitch with ffmpeg, upload the result.
+      const dir = await mkdtemp(join(tmpdir(), "cuts-"));
+      try {
+        const localPaths = await Promise.all(
+          clipUrls.map(async (u, i) => {
+            const b = new Uint8Array(await (await fetch(u as string)).arrayBuffer());
+            const p = join(dir, `s${i}.mp4`);
+            await writeFile(p, b);
+            return p;
+          }),
+        );
+        const stitched = join(dir, "out.mp4");
+        await stitchClips(
+          seq.shots.map((s, i) => ({ path: localPaths[i], transition: s.transition })),
+          stitched,
+        );
+        const finalBytes = new Uint8Array(await readFile(stitched));
+
+        const totalDur = seq.shots.reduce((a, s) => a + s.durationSec, 0);
+        const { data: job } = await admin
+          .from("ad_jobs")
+          .insert({
+            account_id: ctx.accountId,
+            created_by: ctx.userId,
+            type: "video",
+            prompt: summary,
+            status: "completed",
+            model: engine,
+          })
+          .select("id")
+          .single();
+        const jobId = job!.id as string;
+        const path = `outputs/${ctx.accountId}/${jobId}/0.mp4`;
+        const up = await admin.storage
+          .from(BUCKET)
+          .upload(path, finalBytes, { contentType: "video/mp4", upsert: true });
+        if (up.error) return null;
+        const { data: asset } = await admin
+          .from("ad_assets")
+          .insert({
+            account_id: ctx.accountId,
+            job_id: jobId,
+            type: "video",
+            storage_path: path,
+            variation_index: variation,
+            metadata: {
+              studio: "video",
+              model: engine,
+              prompt: `${seq.styleHeader}\n\n${seq.shots
+                .map((s, i) => `Shot ${i + 1} (${s.transition}): ${s.videoPrompt}`)
+                .join("\n\n")}`,
+              summary,
+              duration: totalDur,
+              resolution,
+              audio: false,
+              cinematic: true,
+              cuts: true,
+              shots: seq.shots.length,
+              ad: adMode === "ad",
+            },
+          })
+          .select("id")
+          .single();
+        return asset ? { id: asset.id as string, url: pub(path), label: summary, duration: totalDur } : null;
+      } finally {
+        await rm(dir, { recursive: true, force: true });
+      }
+    };
+
+    const results = await Promise.all(
+      Array.from({ length: count }).map((_, i) => (cutsActive ? makeOneCuts(i) : makeOne(i))),
+    );
     const videos = results.filter((v): v is NonNullable<typeof v> => !!v);
     console.log(
-      `[ai-ads/video/create] ${engine} | ${duration}s | ${resolution} | audio:${audio} | cinematic:${cinematic} | ${videos.length}/${count} | "${cleanPrompt.slice(0, 60)}"`,
+      `[ai-ads/video/create] ${engine} | ${duration}s | ${resolution} | audio:${audio} | cinematic:${cinematic} | cuts:${cutsActive} | ${videos.length}/${count} | "${cleanPrompt.slice(0, 60)}"`,
     );
     if (!videos.length)
       return NextResponse.json({ error: "The video didn't render — please try again." }, { status: 502 });

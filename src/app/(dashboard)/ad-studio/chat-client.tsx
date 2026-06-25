@@ -24,6 +24,7 @@ import {
   SlidersHorizontal,
   Image as ImageIcon,
   PanelLeft,
+  Camera,
 } from "lucide-react";
 
 import { Lightbox, ActionIcon, type ViewerItem } from "./ad-result";
@@ -142,6 +143,8 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
   const [angle, setAngle] = useState("");
   const [lighting, setLighting] = useState("");
   const [look, setLook] = useState("");
+  const [realism, setRealism] = useState(true);
+  const [mood, setMood] = useState("auto");
 
   const [viewer, setViewer] = useState<ViewerItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -255,6 +258,74 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
     ]);
     setLoading(true);
     try {
+      const hasAttachments =
+        localFiles.length > 0 ||
+        localProducts.length > 0 ||
+        refIds.length > 0 ||
+        !!localStyle ||
+        !!localLogo ||
+        !!lockedLook ||
+        !!pinnedUrl;
+      if (!override && !hasAttachments) {
+        // ASYNC path (plain text + @-souls): enqueue an image job — the worker renders
+        // and appends the assistant message — then poll and reload the chat. No 1–3 min
+        // held request, so the "An error o…" timeout class can't happen here.
+        const ad = new FormData();
+        ad.set("kind", "image");
+        ad.set("text", text);
+        if (activeChatId) ad.set("chatId", activeChatId);
+        if (variations > 1) ad.set("variations", String(variations));
+        if (quality !== "standard") ad.set("quality", quality);
+        if (format !== "auto") ad.set("format", format);
+        ad.set("realism", String(realism));
+        if (realism) ad.set("mood", mood);
+        if (localSouls.length) ad.set("soulIds", JSON.stringify(localSouls.map((s) => s.id)));
+        const res = await fetch("/api/ai-ads/jobs", { method: "POST", body: ad });
+        const raw0 = await res.text();
+        let j0: { jobId?: string; chatId?: string; error?: string } | null = null;
+        try {
+          j0 = JSON.parse(raw0);
+        } catch {
+          j0 = null;
+        }
+        if (res.status === 402) {
+          setError("You're out of credits — top up to generate.");
+          return;
+        }
+        if (!res.ok || !j0?.jobId) {
+          setError((j0 && j0.error) || "Couldn't start the render");
+          return;
+        }
+        if (j0.chatId) setActiveChatId(j0.chatId);
+        const t0 = Date.now();
+        for (;;) {
+          await new Promise((r) => setTimeout(r, 3000));
+          if (Date.now() - t0 > 15 * 60 * 1000) {
+            setError("Timed out waiting for the render");
+            break;
+          }
+          const sres = await fetch(`/api/ai-ads/jobs/${j0.jobId}`);
+          const sraw = await sres.text();
+          let s: { status?: string; error?: string } | null = null;
+          try {
+            s = JSON.parse(sraw);
+          } catch {
+            continue; // transient blip — keep polling
+          }
+          if (!s) continue;
+          if (s.status === "completed") {
+            if (j0.chatId) await openChat(j0.chatId);
+            break;
+          }
+          if (s.status === "failed") {
+            if (j0.chatId) await openChat(j0.chatId);
+            setError(s.error || "Generation failed");
+            break;
+          }
+        }
+        void loadChats();
+        return;
+      }
       const fd = new FormData();
       fd.set("text", text);
       if (activeChatId) fd.set("chatId", activeChatId);
@@ -271,15 +342,39 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
       if (localSouls.length) fd.set("soulIds", JSON.stringify(localSouls.map((s) => s.id)));
       if (!override && format !== "auto") fd.set("format", format);
       if (!override) {
+        fd.set("realism", String(realism));
+        if (realism) fd.set("mood", mood);
         const directives = [lens, angle, lighting, look].filter(Boolean).join("; ");
         if (directives) fd.set("directives", directives);
       }
       const r = await fetch("/api/ai-ads/chat", { method: "POST", body: fd });
-      if (!r.ok) throw new Error(((await r.json()) as { error?: string }).error ?? "Failed");
-      const j = (await r.json()) as {
-        chatId: string;
-        message: { id: string; text: string; assets: Asset[]; suggestions?: string[]; error?: boolean };
-      };
+      // Parse defensively. A long render (Best can be ~1–3 min) that gets interrupted —
+      // a dev hot-reload, a tab/network blip — returns Next's non-JSON error page; calling
+      // r.json() on it is what throws "Unexpected token 'A'". Read text first, then try to
+      // parse. The image usually still finished and was saved server-side, so on any failure
+      // we reload the chat from the DB to surface it rather than crashing.
+      const raw = await r.text();
+      let j:
+        | {
+            chatId: string;
+            message: { id: string; text: string; assets: Asset[]; suggestions?: string[]; error?: boolean };
+          }
+        | null = null;
+      try {
+        j = JSON.parse(raw);
+      } catch {
+        j = null;
+      }
+      if (!r.ok || !j) {
+        const serverErr = j ? (j as { error?: string }).error : null;
+        if (activeChatId) await openChat(activeChatId);
+        else await loadChats();
+        setError(
+          serverErr ||
+            "The render was interrupted — if the image finished it'll appear above; otherwise tap Generate again.",
+        );
+        return;
+      }
       setActiveChatId(j.chatId);
       setMessages((m) => [
         ...m,
@@ -1106,6 +1201,41 @@ async function writeCopy(a: Asset) {
                 <SlidersHorizontal className="size-3.5" />
                 Director
               </button>
+              <button
+                type="button"
+                onClick={() => setRealism((v) => !v)}
+                title={
+                  realism
+                    ? "Realistic photo — real skin, film grade, lighting & lens"
+                    : "Off — raw prompt (best for logos, graphics, illustration)"
+                }
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] transition-colors hover:border-white/25 ${
+                  realism
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-white/10 bg-white/5 text-foreground/80 hover:text-foreground"
+                }`}
+              >
+                <Camera className="size-3.5" />
+                Realistic
+              </button>
+              {realism ? (
+                <select
+                  value={mood}
+                  onChange={(e) => setMood(e.target.value)}
+                  title="Mood / look — Auto lets the director choose by scene"
+                  className="cursor-pointer appearance-none rounded-lg border border-white/10 bg-white/5 py-1.5 pl-2.5 pr-2 text-[12px] text-foreground/80 outline-none transition-colors hover:border-white/25"
+                >
+                  <option value="auto">Mood: Auto</option>
+                  <option value="romantic">Romantic</option>
+                  <option value="editorial">Editorial</option>
+                  <option value="cinematic">Cinematic</option>
+                  <option value="documentary">Documentary</option>
+                  <option value="golden hour">Golden hour</option>
+                  <option value="noir">Noir</option>
+                  <option value="studio">Studio</option>
+                  <option value="moody">Moody</option>
+                </select>
+              ) : null}
             </div>
           </div>
         </div>

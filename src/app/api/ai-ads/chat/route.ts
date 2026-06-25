@@ -19,6 +19,7 @@ import { variationPrompts } from "@/lib/ai-ads/variations";
 import { mapLimit, withRetry } from "@/lib/ai-ads/batch";
 import { enhancePrompt } from "@/lib/ai-ads/enhance";
 import { readReferenceIdea, describeProduct } from "@/lib/ai-ads/reference-idea";
+import { directImage } from "@/lib/ai-ads/image-director";
 import { upscaleImage } from "@/lib/ai-ads/upscale";
 import { pickBestAesthetic } from "@/lib/ai-ads/aesthetic";
 
@@ -78,6 +79,10 @@ export async function POST(req: Request) {
     } catch {
       /* ignore */
     }
+    // Photographic realism director (default on) — enriches plain-image prompts with
+    // the realism playbook; off = the user's raw prompt (good for graphics/illustration).
+    const realism = String(form.get("realism") ?? "true") !== "false";
+    const mood = String(form.get("mood") ?? "auto").slice(0, 40);
     const anyFile =
       ["products", "references"].some((k) =>
         form.getAll(k).some((f) => f instanceof File && (f as File).size > 0),
@@ -183,6 +188,7 @@ export async function POST(req: Request) {
     // the message — composed into the image as named subjects (a character as itself,
     // a location as the setting, a product as the product), kept accurate.
     const soulHandleMatches = [...text.matchAll(/@([a-zA-Z0-9_-]+)/g)].map((m) => m[1].toLowerCase());
+    const soulNameByHandle: Record<string, string> = {};
     if (soulIds.length || soulHandleMatches.length) {
       const { data: souls } = await admin
         .from("ad_soul_ids")
@@ -194,6 +200,7 @@ export async function POST(req: Request) {
           soulHandleMatches.includes(String(s.handle).toLowerCase()),
       );
       for (const s of chosen.slice(0, 4)) {
+        soulNameByHandle[String(s.handle).toLowerCase()] = String(s.name);
         refs.push({
           url: pub(s.storage_path as string),
           role: "soul",
@@ -340,16 +347,42 @@ export async function POST(req: Request) {
           " Keep the full subject comfortably within the frame — nothing important cropped or bleeding off the edges.";
         const adSafeFrame =
           " Keep the entire composition inside the frame with comfortable safe margins — every headline, word of copy, the logo and the call-to-action must be FULLY visible and must NOT touch the edges, be cropped, or bleed off the frame.";
+        // Photographic realism: the director rewrites the plain-image prompt with the
+        // realism playbook (real skin, film grade, motivated light, lens) — adapting to
+        // the mood and honouring non-photo styles. Skipped for edits and text/posters.
+        const realismApplies = realism && !isEditTurn && !wantsText;
+        let conceptForGpt = conceptBase;
+        if (realismApplies) {
+          const cleanText = text.replace(
+            /@([a-zA-Z0-9_-]+)/g,
+            (_, h: string) => soulNameByHandle[h.toLowerCase()] ?? h,
+          );
+          const soulSubjects = refs
+            .filter((r) => r.role === "soul")
+            .map((r) => ({ tag: r.label ?? "", desc: r.label ?? "", kind: r.kind ?? "" }));
+          conceptForGpt = await directImage({
+            prompt: cleanText,
+            mood,
+            aspect,
+            subjects: soulSubjects.length ? soulSubjects : undefined,
+          });
+        }
         usedPrompt = isEditTurn
           ? `${conceptBase}.${guide} Preserve the existing layout, subject, colours and any existing text exactly — change ONLY what was asked.${safeMargins}`
           : wantsText
             ? `${conceptBase}.${guide} Design a complete, premium, magazine-quality advertisement: ` +
               `a strong headline with supporting copy, a tasteful logo and call-to-action, clean professional typography and a polished, balanced layout. Render all text crisply and correctly.${adSafeFrame}`
-            : `${conceptBase}.${guide} Render a single, clean, photorealistic image of exactly this. Do NOT add any text, headline, caption, logo, watermark, label, border, UI or graphic-design overlay — produce a pure image, not a poster or ad.${safeMargins}`;
+            : realismApplies
+              ? `${conceptForGpt}${guide}${safeMargins}`
+              : `${conceptBase}.${guide} Render a single, clean, photorealistic image of exactly this. Do NOT add any text, headline, caption, logo, watermark, label, border, UI or graphic-design overlay — produce a pure image, not a poster or ad.${safeMargins}`;
         const n = Math.min(variations, 8);
-        // Use GPT Image 2 when composing @-referenced Soul IDs — far stronger
-        // multi-subject adherence (keeps the character + the location together).
-        const gptModel = refs.some((r) => r.role === "soul") ? ("gpt-image-2" as const) : undefined;
+        // Use GPT Image 2 (the top model) when composing @-referenced Soul IDs — far
+        // stronger multi-subject adherence — OR when the user picks Best quality, so a
+        // plain prompt at Best gets the most realistic skin/detail the ladder offers.
+        const gptModel =
+          refs.some((r) => r.role === "soul") || quality === "best"
+            ? ("gpt-image-2" as const)
+            : undefined;
         if (gptModel) genModel = gptModel;
         const callGpt = () =>
           refs.length
