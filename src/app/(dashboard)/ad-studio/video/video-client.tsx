@@ -226,6 +226,13 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
             boxClassName="rounded-lg border border-white/10 bg-white/5 focus-within:border-primary"
             fieldClassName="px-3 py-2 text-sm"
           />
+          <div
+            className={`mt-1 pr-1 text-right text-[11px] ${
+              prompt.length > 5000 ? "text-amber-400" : "text-muted-foreground/60"
+            }`}
+          >
+            {prompt.length.toLocaleString()} / 5,000
+          </div>
         </div>
 
         {/* Start-frame chips */}

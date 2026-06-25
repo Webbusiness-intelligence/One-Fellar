@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     let chatId: string | undefined;
 
     if (kind === "video") {
-      const prompt = String(form.get("prompt") ?? "").trim().slice(0, 600);
+      const prompt = String(form.get("prompt") ?? "").trim().slice(0, 5000);
       if (!prompt) return NextResponse.json({ error: "Describe the video" }, { status: 400 });
       const engine = String(form.get("engine") || "seedance-fast");
       const duration = Math.min(Math.max(Math.round(Number(form.get("duration")) || 5), 3), 15);

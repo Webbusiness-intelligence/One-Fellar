@@ -37,7 +37,7 @@ type Brief = {
 
 export async function runVideoJob(job: Job): Promise<number> {
   const b = (job.brief ?? {}) as Brief;
-  const prompt = String(b.prompt ?? "").trim().slice(0, 600);
+  const prompt = String(b.prompt ?? "").trim().slice(0, 5000);
   if (!prompt) throw new Error("Describe the video");
 
   const engine = (ENGINES as string[]).includes(String(b.engine))
