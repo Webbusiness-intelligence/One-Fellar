@@ -30,6 +30,10 @@ CREATE INDEX IF NOT EXISTS ad_skills_account_idx ON ad_skills(account_id, create
 
 ALTER TABLE ad_skills ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS ad_skills_select ON ad_skills;
+DROP POLICY IF EXISTS ad_skills_insert ON ad_skills;
+DROP POLICY IF EXISTS ad_skills_update ON ad_skills;
+DROP POLICY IF EXISTS ad_skills_delete ON ad_skills;
 CREATE POLICY ad_skills_select ON ad_skills FOR SELECT USING (is_account_member(account_id));
 CREATE POLICY ad_skills_insert ON ad_skills FOR INSERT WITH CHECK (is_account_member(account_id, 'agent'));
 CREATE POLICY ad_skills_update ON ad_skills FOR UPDATE USING (is_account_member(account_id, 'agent'));
