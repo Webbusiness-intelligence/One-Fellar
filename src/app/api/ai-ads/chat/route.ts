@@ -13,16 +13,9 @@ import { requireRole, toErrorResponse } from "@/lib/auth/account";
 import { supabaseAdmin } from "@/lib/automations/admin-client";
 import { routeChat } from "@/lib/ai-ads/router";
 import { planTurn } from "@/lib/ai-ads/agent";
-import { chatGenerate, chatEdit, gptImageEdit, gptImageGenerate } from "@/lib/ai-ads/chat-models";
 import { FORMAT_IDS } from "@/lib/ai-ads/generate-image";
 import { chatCredits } from "@/lib/ai-ads/cost";
-import { variationPrompts } from "@/lib/ai-ads/variations";
-import { mapLimit, withRetry } from "@/lib/ai-ads/batch";
-import { enhancePrompt } from "@/lib/ai-ads/enhance";
-import { readReferenceIdea, describeProduct } from "@/lib/ai-ads/reference-idea";
 import { directImage } from "@/lib/ai-ads/image-director";
-import { upscaleImage } from "@/lib/ai-ads/upscale";
-import { pickBestAesthetic } from "@/lib/ai-ads/aesthetic";
 
 const BUCKET = "ad-studio";
 
@@ -310,7 +303,6 @@ export async function POST(req: Request) {
       ) ||
       refs.some((r) => r.role === "logo");
 
-    let outUrls: string[] = [];
     let usedPrompt = decision.prompt;
     let genModel: string = decision.model;
     let failed = false;
@@ -440,131 +432,12 @@ export async function POST(req: Request) {
           jobId: jid,
           message: { id: assistantMsgId, role: "assistant", text: "Generating…", assets: [], pending: true },
         });
-      } else if (hasRefs) {
-        // Product/logo are the IMAGE anchors (kept recognisable, may be tastefully
-        // restyled). References are READ for their creative IDEA (vision) and used as
-        // inspiration text only — never fed to the image model, so nothing is copied.
-        const anchors = refs.filter((r) => r.role !== "reference"); // product(s) + logo
-        const productRefs = anchors.filter((r) => r.role === "product");
-        const referenceRefs = refs.filter((r) => r.role === "reference");
-        const imageUrls = anchors.map((r) => r.url);
-
-        const roleText = (r: Ref, i: number) => {
-          const n = i + 1;
-          if (r.role === "edit")
-            return `Image ${n} is the CURRENT design — apply only the requested change and keep everything else the same.`;
-          if (r.role === "logo")
-            return `Image ${n} is the brand LOGO — place it tastefully and keep it completely unaltered.`;
-          if (r.role === "soul")
-            return `Image ${n} is ${r.label ?? "a saved asset"}${
-              r.kind ? ` (the ${r.kind})` : ""
-            } — feature it exactly as shown, keeping it accurate and recognisable${
-              r.kind === "location" ? "; use it as the actual setting/background" : ""
-            }.`;
-          return `Image ${n} is the HERO PRODUCT — it must stay the SAME product: keep its iconic form, shape/silhouette, brand and label clearly intact and recognisable. You may restyle the scene, lighting and finish around it and enhance its polish, but never change its shape or turn it into a different kind of product.`;
-        };
-        const guide = anchors.map(roleText).join(" ");
-
-        // Vision pass: identify the product (so concepts feature THE product, not a
-        // generic one) and distil the reference's idea (not its pixels) for inspiration.
-        const [productDesc, idea] = await Promise.all([
-          productRefs.length ? describeProduct({ imageUrls: productRefs.map((r) => r.url) }) : "",
-          referenceRefs.length ? readReferenceIdea({ imageUrls: referenceRefs.map((r) => r.url) }) : "",
-        ]);
-        const seed = [
-          conceptBase,
-          productDesc &&
-            `The hero subject featured in every image is ${productDesc} — keep it exact, only reinvent the scene and treatment around it.`,
-          idea &&
-            `Creative inspiration to draw on as an IDEA only (do NOT copy its background, props or styling): ${idea}`,
-        ]
-          .filter(Boolean)
-          .join(". ");
-
-        const compose = (concept: string) =>
-          `${concept}.${guide ? " " + guide : ""} ` +
-          (wantsText
-            ? `Produce one complete, premium, original advertisement with its own distinct scene, composition and art direction.`
-            : `Render one clean, premium, photorealistic image of exactly this — no added text, logos or graphic-design overlays.`);
-
-        const runOne = (prompt: string, pro?: boolean) =>
-          imageUrls.length
-            ? chatEdit({ prompt, imageUrls, format: aspect, pro })
-            : chatGenerate({ prompt, format: aspect, model: pro ? "nano-banana-pro" : "nano-banana" });
-
-        if (variations > 1) {
-          // N COMPLETELY DIFFERENT ad concepts, each drawing on the reference's idea.
-          genModel = imageUrls.length ? "nano-banana-edit" : "nano-banana";
-          const concepts = await variationPrompts({ prompt: seed, count: variations });
-          usedPrompt = compose(concepts[0] ?? seed);
-          console.log(
-            `[ai-ads/chat] idea-variations | product: ${productDesc || "—"} | reference idea: ${
-              idea ? "yes" : "no"
-            } | concepts: ${concepts.length}`,
-          );
-          const batch = await mapLimit(concepts, 3, (c) => withRetry(() => runOne(compose(c))));
-          outUrls = batch.filter((u): u is string => !!u);
-          console.log(
-            `[ai-ads/chat] idea-variations done: ${outUrls.length}/${variations} succeeded`,
-          );
-        } else {
-          const pro = quality !== "standard";
-          genModel = imageUrls.length
-            ? pro
-              ? "nano-banana-pro-edit"
-              : "nano-banana-edit"
-            : pro
-              ? "nano-banana-pro"
-              : "nano-banana";
-          usedPrompt = compose(await enhancePrompt({ prompt: seed }));
-          outUrls = await runOne(usedPrompt, pro);
-        }
-      } else if (variations > 1) {
-        // Batch: expand the concept into N distinct, premium variants.
-        genModel = "nano-banana";
-        const prompts = await variationPrompts({ prompt: conceptBase, count: variations });
-        usedPrompt = prompts[0] ?? decision.prompt;
-        const batch = await mapLimit(prompts, 3, (p) =>
-          withRetry(() => chatGenerate({ prompt: p, format: aspect, model: "nano-banana" })),
-        );
-        outUrls = batch.filter((u): u is string => !!u);
-      } else {
-        // Single generation → premium "Art Director" enhancer.
-        const enhanced = await enhancePrompt({ prompt: conceptBase });
-        usedPrompt = enhanced;
-        if (quality === "standard") {
-          outUrls = await chatGenerate({ prompt: usedPrompt, format: aspect, model: decision.model });
-        } else {
-          // HD / Best → hero model; Best = best-of-3 aesthetic pick; then upscale.
-          genModel = "imagen4-ultra";
-          const n = quality === "best" ? 3 : 1;
-          const candidates = (
-            await Promise.all(
-              Array.from({ length: n }, async () => {
-                try {
-                  const u = await chatGenerate({ prompt: usedPrompt, format: aspect, model: "imagen4-ultra" });
-                  return u[0] ?? null;
-                } catch (e) {
-                  console.error("[ai-ads/chat] hero gen failed:", e);
-                  return null;
-                }
-              }),
-            )
-          ).filter((u): u is string => !!u);
-          let chosen = candidates[0] ?? null;
-          if (quality === "best" && candidates.length > 1) chosen = await pickBestAesthetic(candidates);
-          if (chosen) {
-            const upscaled = await upscaleImage(chosen);
-            outUrls = [upscaled ?? chosen];
-          }
-        }
       }
     } catch (e) {
       failed = true;
       console.error("[ai-ads/chat] generation failed:", e);
     }
 
-    if (!outUrls.length) {
       const txt = failed
         ? "Something went wrong making that image — try again."
         : "I couldn't make that one. Try rephrasing it?";
@@ -584,85 +457,6 @@ export async function POST(req: Request) {
         chatId,
         message: { id: am?.id, role: "assistant", text: txt, assets: [], error: true },
       });
-    }
-
-    // Persist a lightweight job + the resulting assets (so gallery/favorite/etc. work).
-    const usedModel = genModel;
-    const { data: job } = await admin
-      .from("ad_jobs")
-      .insert({
-        account_id: ctx.accountId,
-        created_by: ctx.userId,
-        type: "image",
-        prompt: decision.prompt,
-        format: decision.aspect,
-        status: "completed",
-        model: usedModel,
-      })
-      .select("id")
-      .single();
-    const jobId = job!.id as string;
-
-    const assets: Array<{ id: string; url: string; label: string; favorite: boolean }> = [];
-    for (let i = 0; i < outUrls.length; i++) {
-      try {
-        const bytes = new Uint8Array(await (await fetch(outUrls[i])).arrayBuffer());
-        const path = `outputs/${ctx.accountId}/${jobId}/${i}.png`;
-        const up = await admin.storage
-          .from(BUCKET)
-          .upload(path, bytes, { contentType: "image/png", upsert: true });
-        if (up.error) continue;
-        const { data: asset } = await admin
-          .from("ad_assets")
-          .insert({
-            account_id: ctx.accountId,
-            job_id: jobId,
-            type: "image",
-            storage_path: path,
-            variation_index: i,
-            metadata: {
-              chat: true,
-              model: usedModel,
-              prompt: decision.prompt,
-              genPrompt: usedPrompt,
-              aspect,
-              quality,
-            },
-          })
-          .select("id")
-          .single();
-        if (asset)
-          assets.push({ id: asset.id, url: pub(path), label: decision.prompt, favorite: false });
-      } catch (e) {
-        console.error("[ai-ads/chat] asset persist failed:", e);
-      }
-    }
-
-    const caption =
-      plan.message ||
-      (assets.length > 1
-        ? `Here are ${assets.length} variations.`
-        : hasRefs
-          ? "Here's the edit."
-          : "Here you go.");
-    const { data: am } = await admin
-      .from("ad_chat_messages")
-      .insert({
-        account_id: ctx.accountId,
-        chat_id: chatId,
-        role: "assistant",
-        text: caption,
-        asset_ids: assets.map((a) => a.id),
-        metadata: { model: usedModel, action: decision.action, aspect, suggestions: plan.suggestions },
-      })
-      .select("id")
-      .single();
-    await admin.from("ad_chats").update({ updated_at: new Date().toISOString() }).eq("id", chatId);
-
-    return NextResponse.json({
-      chatId,
-      message: { id: am?.id, role: "assistant", text: caption, assets, suggestions: plan.suggestions },
-    });
   } catch (err) {
     return toErrorResponse(err);
   }
