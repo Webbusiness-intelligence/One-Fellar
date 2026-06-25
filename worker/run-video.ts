@@ -222,24 +222,48 @@ export async function runVideoJob(job: Job): Promise<number> {
     );
 
     await setProgress(job.id, `take ${variation + 1}: rendering ${seq.shots.length} shots`);
-    const clipUrls = await Promise.all(
-      seq.shots.map((shot, i) =>
-        renderSceneVideo(engine, {
-          startImageUrl: starts[i],
-          prompt: `${seq.styleHeader}\n\n${shot.videoPrompt}`,
-          negativePrompt: seq.negativePrompt,
-          duration: shot.durationSec,
-          resolution,
-          audio: false,
-          bitrate,
-        }).catch((e) => {
-          console.error(`[worker] cuts shot ${i} failed:`, String((e as Error)?.message ?? e));
+    const shotErrors: string[] = [];
+    const renderShot = async (shot: (typeof seq.shots)[number], i: number): Promise<string | null> => {
+      const args = {
+        startImageUrl: starts[i],
+        prompt: `${seq.styleHeader}\n\n${shot.videoPrompt}`,
+        negativePrompt: seq.negativePrompt,
+        duration: shot.durationSec,
+        resolution,
+        audio: false,
+        bitrate,
+      };
+      try {
+        return await renderSceneVideo(engine, args);
+      } catch (e1) {
+        console.error(`[worker] cuts shot ${i} attempt 1 failed:`, String((e1 as Error)?.message ?? e1));
+        try {
+          return await renderSceneVideo(engine, args); // one retry — covers transient fal failures
+        } catch (e2) {
+          const m = String((e2 as Error)?.message ?? e2);
+          console.error(`[worker] cuts shot ${i} attempt 2 failed:`, m);
+          shotErrors.push(`shot ${i + 1}: ${m}`);
           return null;
-        }),
-      ),
-    );
-    if (clipUrls.some((u) => !u)) return false;
-    const totalDur = seq.shots.reduce((a, s) => a + s.durationSec, 0);
+        }
+      }
+    };
+    const rendered = await Promise.all(seq.shots.map((shot, i) => renderShot(shot, i)));
+    // Resilient: stitch the shots that rendered (in order); only fail the take if
+    // NONE rendered — and then surface the real fal error, not a generic message.
+    const survivors = seq.shots
+      .map((shot, i) => ({ shot, url: rendered[i] }))
+      .filter((x) => x.url) as { shot: (typeof seq.shots)[number]; url: string }[];
+    if (!survivors.length) {
+      throw new Error(shotErrors.join(" | ") || "all cut shots failed to render");
+    }
+    if (survivors.length < seq.shots.length) {
+      console.warn(
+        `[worker] cuts: ${seq.shots.length - survivors.length}/${seq.shots.length} shots failed; stitching ${survivors.length}`,
+      );
+    }
+    const clipUrls = survivors.map((s) => s.url);
+    const usedShots = survivors.map((s) => s.shot);
+    const totalDur = usedShots.reduce((a, s) => a + s.durationSec, 0);
     costUsd += totalDur * per;
 
     await setProgress(job.id, `take ${variation + 1}: stitching`);
@@ -254,7 +278,7 @@ export async function runVideoJob(job: Job): Promise<number> {
         }),
       );
       const stitched = join(dir, "out.mp4");
-      await stitchClips(seq.shots.map((s, i) => ({ path: localPaths[i], transition: s.transition })), stitched);
+      await stitchClips(usedShots.map((s, i) => ({ path: localPaths[i], transition: s.transition })), stitched);
       const finalBytes = new Uint8Array(await readFile(stitched));
       const path = `outputs/${job.account_id}/${job.id}/${variation}.mp4`;
       const up = await admin.storage.from(BUCKET).upload(path, finalBytes, { contentType: "video/mp4", upsert: true });
@@ -266,14 +290,14 @@ export async function runVideoJob(job: Job): Promise<number> {
         metadata: {
           studio: "video",
           model: engine,
-          prompt: `${seq.styleHeader}\n\n${seq.shots.map((s, i) => `Shot ${i + 1} (${s.transition}): ${s.videoPrompt}`).join("\n\n")}`,
+          prompt: `${seq.styleHeader}\n\n${usedShots.map((s, i) => `Shot ${i + 1} (${s.transition}): ${s.videoPrompt}`).join("\n\n")}`,
           summary,
           duration: totalDur,
           resolution,
           audio: false,
           cinematic: true,
           cuts: true,
-          shots: seq.shots.length,
+          shots: usedShots.length,
           ad: adMode === "ad",
         },
       });
@@ -285,16 +309,18 @@ export async function runVideoJob(job: Job): Promise<number> {
 
   const runner = cutsActive ? makeOneCuts : makeOne;
   let made = 0;
+  let lastErr = "";
   for (let i = 0; i < count; i++) {
     try {
       if (await runner(i)) made++;
     } catch (e) {
-      console.error(`[worker] video take ${i} failed:`, String((e as Error)?.message ?? e));
+      lastErr = String((e as Error)?.message ?? e);
+      console.error(`[worker] video take ${i} failed:`, lastErr);
     }
   }
   console.log(
     `[worker] video ${engine} | ${duration}s | ${resolution} | cuts:${cutsActive} | ${made}/${count} | "${cleanPrompt.slice(0, 50)}"`,
   );
-  if (!made) throw new Error("The video didn't render");
+  if (!made) throw new Error(lastErr || "The video didn't render");
   return toCredits(costUsd);
 }
