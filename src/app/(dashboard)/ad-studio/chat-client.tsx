@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { waitForJob } from "@/lib/ai-ads/wait-job";
 import {
   Plus,
   Loader2,
@@ -336,32 +337,11 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
       void loadChats();
       // Enqueued render → poll the job, then reload the chat (worker fills the message).
       if (jobId && am.pending) {
-        const t0 = Date.now();
-        for (;;) {
-          await new Promise((rr) => setTimeout(rr, 3000));
-          if (Date.now() - t0 > 15 * 60 * 1000) {
-            setError("Timed out waiting for the render");
-            break;
-          }
-          const sres = await fetch(`/api/ai-ads/jobs/${jobId}`);
-          const sraw = await sres.text();
-          let s: { status?: string; error?: string } | null = null;
-          try {
-            s = JSON.parse(sraw);
-          } catch {
-            continue; // transient blip — keep polling
-          }
-          if (!s) continue;
-          if (s.status === "completed") {
-            if (cid) await openChat(cid);
-            break;
-          }
-          if (s.status === "failed") {
-            if (cid) await openChat(cid);
-            setError(s.error || "Generation failed");
-            break;
-          }
-        }
+        // Realtime (with polling fallback) — resolves the moment the worker finishes.
+        const res = await waitForJob(jobId);
+        if (cid) await openChat(cid);
+        if (res.status === "failed") setError(res.error || "Generation failed");
+        else if (res.status === "timeout") setError("Timed out waiting for the render");
       }
     } catch (e) {
       setError(msg(e));

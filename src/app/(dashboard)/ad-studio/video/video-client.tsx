@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Plus, Loader2, Trash2, X, ChevronLeft, ChevronRight, Volume2, VolumeX, Scissors } from "lucide-react";
+import { waitForJob } from "@/lib/ai-ads/wait-job";
 import { MentionTextarea } from "../mention-textarea";
 import { GeneratingPanel } from "../generating";
 
@@ -145,30 +146,23 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
       if (res.status === 402) throw new Error("You're out of credits — top up to generate.");
       if (!res.ok || !j?.jobId) throw new Error((j && j.error) || "Couldn't start the render");
 
-      const started = Date.now();
-      for (;;) {
-        await new Promise((r) => setTimeout(r, 3000));
-        if (Date.now() - started > 15 * 60 * 1000) throw new Error("Timed out waiting for the render");
-        const sres = await fetch(`/api/ai-ads/jobs/${j.jobId}`);
-        const sraw = await sres.text();
-        let s: { status?: string; error?: string; assets?: VideoItem[] } | null = null;
-        try {
-          s = JSON.parse(sraw);
-        } catch {
-          continue; // a transient blip — keep polling
-        }
-        if (!s) continue;
-        if (s.status === "completed") {
-          const vids = (s.assets ?? []).filter((a) => (a as { type?: string }).type === "video");
-          setItems((xs) => [...vids, ...xs]);
-          setPrompt("");
-          setFile(null);
-          setRefs([]);
-          setAtQuery(null);
-          break;
-        }
-        if (s.status === "failed") throw new Error(s.error || "The video didn't render");
+      // Realtime (with polling fallback) — resolves the moment the worker finishes.
+      const outcome = await waitForJob(j.jobId);
+      if (outcome.status === "failed") throw new Error(outcome.error || "The video didn't render");
+      if (outcome.status === "timeout") throw new Error("Timed out waiting for the render");
+      const sres = await fetch(`/api/ai-ads/jobs/${j.jobId}`);
+      let assets: VideoItem[] = [];
+      try {
+        assets = ((JSON.parse(await sres.text()) as { assets?: VideoItem[] }).assets ?? []) as VideoItem[];
+      } catch {
+        /* ignore */
       }
+      const vids = assets.filter((a) => (a as { type?: string }).type === "video");
+      setItems((xs) => [...vids, ...xs]);
+      setPrompt("");
+      setFile(null);
+      setRefs([]);
+      setAtQuery(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
     } finally {
