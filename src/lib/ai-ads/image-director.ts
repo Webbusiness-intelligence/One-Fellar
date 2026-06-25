@@ -13,8 +13,9 @@ const MODEL = "gemini-2.5-flash";
 const REALISM =
   "Shot on 35mm film, editorial photography. Natural skin with visible pores, subsurface scattering, fine vellus hair and subtle natural imperfections — never plastic, waxy or over-smoothed. Soft motivated natural light, a slightly desaturated film-grade 60:30:10 colour palette, fine grain, gentle highlight rolloff, shallow depth of field. True photographic realism — no 3D render, no cartoon, no CGI, no digital over-sharpening, no oversaturation.";
 
-function fallback(prompt: string): string {
-  return `${prompt}. ${REALISM} No added text, captions, watermark or logo.`;
+function fallback(prompt: string, skill?: string): string {
+  const look = skill ? skill : REALISM;
+  return `${prompt}. ${look} No added text, captions, watermark or logo.`;
 }
 
 export async function directImage(opts: {
@@ -23,14 +24,18 @@ export async function directImage(opts: {
   aspect?: string;
   subjects?: { tag: string; desc: string; kind: string }[];
   variation?: number;
+  skill?: string; // a selected Skill's recipe (skillAddendum) — applied as the look
 }): Promise<string> {
-  if (!GEMINI_API_KEY) return fallback(opts.prompt);
+  if (!GEMINI_API_KEY) return fallback(opts.prompt, opts.skill);
 
   const mood = opts.mood && opts.mood !== "auto" ? opts.mood : "infer the best-fitting one from the scene";
   const subjectsBlock = opts.subjects?.length
     ? `\nSUBJECTS — feature each, keeping it accurate and recognisable: ${opts.subjects
         .map((s) => `${s.desc} (${s.kind})`)
         .join("; ")}.`
+    : "";
+  const skillBlock = opts.skill
+    ? `\n\nSKILL — apply this with TOP PRIORITY (it defines the look, and OVERRIDES the photo-realism default above if it specifies a non-photographic style): ${opts.skill}`
     : "";
 
   const instruction = `You are an award-winning photographer + colourist. Rewrite the USER PROMPT into ONE rich, production-ready PHOTOGRAPH prompt${
@@ -50,7 +55,7 @@ ADAPT to the scene + mood (${mood}); for a photograph, choose what best fits (an
 - Colour grade + film stock + 60:30:10 colours (teal-orange, faded pastel, Kodak Vision3, Fuji Eterna…), slightly desaturated, never oversaturated.
 - Lens / focal length (24mm wide context, 35mm documentary-natural, 50mm neutral, 85mm f/1.8 beauty close-up bokeh).
 - Shot size + camera angle + composition (rule of thirds, leading lines, depth layering, negative space).
-- Time of day + practical atmosphere (haze, god-rays, lens flare, bokeh, halation — no CGI).${subjectsBlock}
+- Time of day + practical atmosphere (haze, god-rays, lens flare, bokeh, halation — no CGI).${subjectsBlock}${skillBlock}
 
 USER PROMPT: "${opts.prompt}"
 
@@ -71,15 +76,15 @@ Return STRICT JSON only: {"prompt":"the single enriched image prompt"}`;
         }),
       },
     );
-    if (!res.ok) return fallback(opts.prompt);
+    if (!res.ok) return fallback(opts.prompt, opts.skill);
     const json = (await res.json()) as {
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
     };
     const raw = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
     const p = JSON.parse(raw) as Partial<{ prompt: string }>;
-    return p.prompt?.trim() || fallback(opts.prompt);
+    return p.prompt?.trim() || fallback(opts.prompt, opts.skill);
   } catch (e) {
     console.error("[ai-ads] directImage failed (non-fatal):", e);
-    return fallback(opts.prompt);
+    return fallback(opts.prompt, opts.skill);
   }
 }

@@ -10,6 +10,8 @@ import { join } from "node:path";
 import { renderSceneVideo, seedanceReferenceToVideo, type VideoEngine } from "@/lib/ai-ads/video-models";
 import { gptImageEdit, gptImageGenerate } from "@/lib/ai-ads/chat-models";
 import { directCinematic, directCuts, type Subject } from "@/lib/ai-ads/cinematic-director";
+import { resolveSkill } from "@/lib/ai-ads/resolve-skill";
+import { skillAddendum } from "@/lib/ai-ads/skills";
 import { stitchClips } from "@/lib/ai-ads/video-stitch";
 import { VIDEO_ENGINE_SEC, FAL, toCredits } from "@/lib/ai-ads/cost";
 import { admin, pub, BUCKET, insertAsset, resolveSouls, setProgress, type Job } from "./db";
@@ -29,6 +31,7 @@ type Brief = {
   mood?: string;
   cuts?: boolean;
   soulIds?: string[];
+  skillId?: string;
   startImageUrl?: string; // pre-uploaded by the enqueue route
 };
 
@@ -49,6 +52,8 @@ export async function runVideoJob(job: Job): Promise<number> {
   const mood = String(b.mood ?? "auto").slice(0, 40);
   const cuts = b.cuts === true;
   const soulIds = Array.isArray(b.soulIds) ? b.soulIds.filter((x) => typeof x === "string").slice(0, 4) : [];
+  const skill = await resolveSkill(admin, b.skillId, job.account_id);
+  const skillText = skill ? skillAddendum(skill) : undefined;
 
   const adMode =
     mood === "commercial" ||
@@ -106,7 +111,7 @@ export async function runVideoJob(job: Job): Promise<number> {
   // ---- single continuous shot ----
   const makeOne = async (variation: number): Promise<boolean> => {
     const shot = cinematic
-      ? await directCinematic({ prompt: cleanPrompt, duration, aspect: format, mode: adMode, mood, subjects, variation })
+      ? await directCinematic({ prompt: cleanPrompt, duration, aspect: format, mode: adMode, mood, subjects, variation, skill: skillText })
       : null;
     if (cinematic) costUsd += FAL.geminiText;
     const videoPrompt = shot?.videoPrompt ?? (useReference ? referencePrompt : cleanPrompt);
@@ -173,7 +178,7 @@ export async function runVideoJob(job: Job): Promise<number> {
   // ---- cut-to-cut: hero base → reframe per shot → render each → stitch ----
   const makeOneCuts = async (variation: number): Promise<boolean> => {
     await setProgress(job.id, `take ${variation + 1}: directing cuts`);
-    const seq = await directCuts({ prompt: cleanPrompt, duration, minShot, aspect: format, mode: adMode, mood, subjects, variation });
+    const seq = await directCuts({ prompt: cleanPrompt, duration, minShot, aspect: format, mode: adMode, mood, subjects, variation, skill: skillText });
     costUsd += FAL.geminiText;
     seq.shots.forEach((s) => (s.transition = "cut")); // hard cuts only (user preference)
 

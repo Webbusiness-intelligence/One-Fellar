@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Plus, Loader2, Trash2, X, ChevronLeft, ChevronRight, Volume2, VolumeX, Scissors } from "lucide-react";
 import { waitForJob } from "@/lib/ai-ads/wait-job";
+import { SkillPicker } from "../skill-picker";
 import { MentionTextarea } from "../mention-textarea";
 import { GeneratingPanel } from "../generating";
 
@@ -44,6 +45,7 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
   const [cinematic, setCinematic] = useState(true);
   const [cuts, setCuts] = useState(false);
   const [mood, setMood] = useState("auto");
+  const [skillId, setSkillId] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +134,7 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
       fd.set("cinematic", String(cinematic));
       if (cinematic) fd.set("mood", mood);
       fd.set("cuts", String(cuts && cinematic));
+      if (cinematic && skillId) fd.set("skillId", skillId);
       if (refs.length) fd.set("soulIds", JSON.stringify(refs.map((r) => r.id)));
       if (file) fd.set("file", file);
       // Enqueue → the worker renders → poll for the result (no 3-min held request).
@@ -392,6 +395,7 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
                 <Scissors className="size-4" />
                 Cuts
               </button>
+              <SkillPicker value={skillId} onChange={setSkillId} kind="video" />
               {cuts && duration < (engine === "kling-pro" ? 6 : engine === "kling-turbo" ? 10 : 8) ? (
                 <span className="text-[11px] text-amber-400/80">
                   needs {engine === "kling-pro" ? "6s" : engine === "kling-turbo" ? "10s" : "8s"}+ for cuts

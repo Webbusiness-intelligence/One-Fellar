@@ -61,6 +61,7 @@ export async function directCinematic(opts: {
   mood?: string; // "auto" or a chosen genre/format/mood
   subjects?: Subject[]; // referenced Soul IDs to bind by tag (e.g. @Image1)
   variation?: number; // 0..N — make each take a different creative combination
+  skill?: string; // a selected Skill's recipe (skillAddendum) — folded into the look
 }): Promise<CinematicShot> {
   if (!GEMINI_API_KEY) return fallback(opts);
 
@@ -75,6 +76,9 @@ export async function directCinematic(opts: {
     opts.mode === "ad"
       ? `\nThis is an ADVERTISEMENT. Pick the best AD FORMAT (UGC/testimonial, before-after, unboxing, product demo, lifestyle, founder story, hero product, comparison, ASMR, hyper-motion/logo, TV spot) and structure the timecoded beats as: a 2-second scroll-stopping HOOK → show the product/benefit clearly → a clean payoff. Keep it diegetic; NO on-screen text or logo unless the user asked.`
       : "";
+  const skillBlock = opts.skill
+    ? `\n\nSKILL — apply this with TOP PRIORITY in [STYLE] and throughout (it defines the look; if it specifies a non-photographic style, honour that): ${opts.skill}`
+    : "";
 
   const instruction = `You are an award-winning film DIRECTOR + cinematographer writing a HIGH-DETAIL, production-grade prompt for ${
     opts.subjects?.length ? "Seedance 2.0 reference-to-video" : "an image-to-video engine"
@@ -97,7 +101,7 @@ NEVER BREAK:
 2. Always include the realism invariants: ${REALISM}
 3. NSFW-safe, composed neutral phrasing so the safety filter does not reject it.
 
-ADAPT the look to the scene + mood (${mood}); make take #${opts.variation ?? 0} a DISTINCT combination — lighting setup (butterfly, Rembrandt, split, rim, window-soft, golden-hour, neon, low-key, chiaroscuro), film stock + 60:30:10 grade (teal-orange, bleach-bypass, faded pastel, Kodak Vision3, Fuji Eterna…), lens per beat (24/35/50/85mm f/1.8), camera angle + composition, practical atmosphere (haze %, god-rays, flare, bokeh, halation — no CGI) — so multiple takes differ.${subjectsBlock}${adBlock}
+ADAPT the look to the scene + mood (${mood}); make take #${opts.variation ?? 0} a DISTINCT combination — lighting setup (butterfly, Rembrandt, split, rim, window-soft, golden-hour, neon, low-key, chiaroscuro), film stock + 60:30:10 grade (teal-orange, bleach-bypass, faded pastel, Kodak Vision3, Fuji Eterna…), lens per beat (24/35/50/85mm f/1.8), camera angle + composition, practical atmosphere (haze %, god-rays, flare, bokeh, halation — no CGI) — so multiple takes differ.${subjectsBlock}${adBlock}${skillBlock}
 
 USER PROMPT: "${opts.prompt}"
 
@@ -196,6 +200,7 @@ export async function directCuts(opts: {
   mood?: string;
   subjects?: Subject[];
   variation?: number;
+  skill?: string; // a selected Skill's recipe (skillAddendum) — folded into the [STYLE] header
 }): Promise<CutSequence> {
   if (!GEMINI_API_KEY) return cutsFallback(opts);
   const maxShots = Math.max(2, Math.floor(opts.duration / opts.minShot));
@@ -204,6 +209,9 @@ export async function directCuts(opts: {
     ? `\nSUBJECTS — keep each accurate and present in every relevant shot:\n${opts.subjects
         .map((s) => `${s.tag} = ${s.desc} (${s.kind})`)
         .join("\n")}`
+    : "";
+  const skillBlock = opts.skill
+    ? `\n\nSKILL — apply this with TOP PRIORITY in the [STYLE] header and every shot (it defines the look; if it specifies a non-photographic style, honour that): ${opts.skill}`
     : "";
 
   const instruction = `You are an award-winning film DIRECTOR + editor. Turn the USER PROMPT into a TRUE CUT-TO-CUT ${
@@ -229,7 +237,7 @@ NEVER BREAK THESE:
 
 ADAPT to scene + mood (${mood}); make take #${opts.variation ?? 0} a distinct combination (lighting, film stock + 60:30:10 grade, lens per shot, atmosphere %).
 
-TRANSITIONS — choose the transition INTO each shot (the first shot's is ignored): "cut" hard cut (DEFAULT, most boundaries), "dissolve" soft (time / emotion), "fade" through black (scene break / ending), "whip" fast smear (high-energy). Prefer "cut"; use others only WHERE NECESSARY.${subjectsBlock}
+TRANSITIONS — choose the transition INTO each shot (the first shot's is ignored): "cut" hard cut (DEFAULT, most boundaries), "dissolve" soft (time / emotion), "fade" through black (scene break / ending), "whip" fast smear (high-energy). Prefer "cut"; use others only WHERE NECESSARY.${subjectsBlock}${skillBlock}
 
 USER PROMPT: "${opts.prompt}"
 

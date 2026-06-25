@@ -16,6 +16,8 @@ import { planTurn } from "@/lib/ai-ads/agent";
 import { FORMAT_IDS } from "@/lib/ai-ads/generate-image";
 import { chatCredits } from "@/lib/ai-ads/cost";
 import { directImage } from "@/lib/ai-ads/image-director";
+import { resolveSkill } from "@/lib/ai-ads/resolve-skill";
+import { skillAddendum } from "@/lib/ai-ads/skills";
 
 const BUCKET = "ad-studio";
 
@@ -77,6 +79,7 @@ export async function POST(req: Request) {
     // the realism playbook; off = the user's raw prompt (good for graphics/illustration).
     const realism = String(form.get("realism") ?? "true") !== "false";
     const mood = String(form.get("mood") ?? "auto").slice(0, 40);
+    const skillId = String(form.get("skillId") ?? "").trim() || null;
     const anyFile =
       ["products", "references"].some((k) =>
         form.getAll(k).some((f) => f instanceof File && (f as File).size > 0),
@@ -343,9 +346,14 @@ export async function POST(req: Request) {
         // Photographic realism: the director rewrites the plain-image prompt with the
         // realism playbook (real skin, film grade, motivated light, lens) — adapting to
         // the mood and honouring non-photo styles. Skipped for edits and text/posters.
+        // A selected SKILL (look/recipe) is folded into the director and applies even
+        // when realism is off (e.g. an anime/3D skill).
         const realismApplies = realism && !isEditTurn && !wantsText;
+        const skill =
+          skillId && !isEditTurn && !wantsText ? await resolveSkill(admin, skillId, ctx.accountId) : null;
+        const useDirector = realismApplies || !!skill;
         let conceptForGpt = conceptBase;
-        if (realismApplies) {
+        if (useDirector) {
           const cleanText = text.replace(
             /@([a-zA-Z0-9_-]+)/g,
             (_, h: string) => soulNameByHandle[h.toLowerCase()] ?? h,
@@ -358,6 +366,7 @@ export async function POST(req: Request) {
             mood,
             aspect,
             subjects: soulSubjects.length ? soulSubjects : undefined,
+            skill: skill ? skillAddendum(skill) : undefined,
           });
         }
         usedPrompt = isEditTurn
@@ -365,7 +374,7 @@ export async function POST(req: Request) {
           : wantsText
             ? `${conceptBase}.${guide} Design a complete, premium, magazine-quality advertisement: ` +
               `a strong headline with supporting copy, a tasteful logo and call-to-action, clean professional typography and a polished, balanced layout. Render all text crisply and correctly.${adSafeFrame}`
-            : realismApplies
+            : useDirector
               ? `${conceptForGpt}${guide}${safeMargins}`
               : `${conceptBase}.${guide} Render a single, clean, photorealistic image of exactly this. Do NOT add any text, headline, caption, logo, watermark, label, border, UI or graphic-design overlay — produce a pure image, not a poster or ad.${safeMargins}`;
         const n = Math.min(variations, 8);

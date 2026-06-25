@@ -125,10 +125,12 @@ export function Lightbox({
   onCutout,
   onSizePack,
   onSaveSoul,
+  onSaveSkill,
   upscaling,
   reframing,
   exporting,
   savingSoul,
+  savingSkill,
   copied,
 }: {
   item: ViewerItem | null;
@@ -142,10 +144,12 @@ export function Lightbox({
   onCutout?: (i: ViewerItem) => void;
   onSizePack?: (i: ViewerItem) => void;
   onSaveSoul?: (i: ViewerItem, name: string, kind: string) => void;
+  onSaveSkill?: (i: ViewerItem) => void;
   upscaling?: boolean;
   reframing?: boolean;
   exporting?: boolean;
   savingSoul?: boolean;
+  savingSkill?: boolean;
   copied: boolean;
 }) {
   const [showReframe, setShowReframe] = useState(false);
@@ -284,6 +288,15 @@ export function Lightbox({
                   </div>
                 ) : null}
               </div>
+            ) : null}
+            {onSaveSkill ? (
+              <ActionIcon
+                onClick={() => onSaveSkill(item)}
+                active={savingSkill}
+                title={savingSkill ? "Saving skill…" : "Save the look as a Skill"}
+              >
+                {savingSkill ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+              </ActionIcon>
             ) : null}
             {onSizePack ? (
               <ActionIcon onClick={() => onSizePack(item)} active={exporting} title="Size pack — 1:1, 9:16, 16:9">

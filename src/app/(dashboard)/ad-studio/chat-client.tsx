@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { waitForJob } from "@/lib/ai-ads/wait-job";
+import { SkillPicker } from "./skill-picker";
 import {
   Plus,
   Loader2,
@@ -146,6 +147,7 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
   const [look, setLook] = useState("");
   const [realism, setRealism] = useState(true);
   const [mood, setMood] = useState("auto");
+  const [skillId, setSkillId] = useState<string | null>(null);
 
   const [viewer, setViewer] = useState<ViewerItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -154,6 +156,7 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
   const [selectedSouls, setSelectedSouls] = useState<SoulRef[]>([]);
   const [atQuery, setAtQuery] = useState<string | null>(null);
   const [savingSoul, setSavingSoul] = useState(false);
+  const [savingSkill, setSavingSkill] = useState(false);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const styleInput = useRef<HTMLInputElement>(null);
@@ -277,6 +280,7 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
       if (!override) {
         fd.set("realism", String(realism));
         if (realism) fd.set("mood", mood);
+        if (skillId) fd.set("skillId", skillId);
         const directives = [lens, angle, lighting, look].filter(Boolean).join("; ");
         if (directives) fd.set("directives", directives);
       }
@@ -488,6 +492,24 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
       setError(msg(e));
     } finally {
       setSavingSoul(false);
+    }
+  }
+
+  async function saveSkill(item: ViewerItem) {
+    setSavingSkill(true);
+    try {
+      const r = await fetch("/api/ai-ads/skills/from-asset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assetId: item.id }),
+      });
+      const j = (await r.json()) as { skill?: unknown; error?: string };
+      if (!r.ok || !j.skill) throw new Error(j.error ?? "Couldn't save skill");
+      setViewer(null);
+    } catch (e) {
+      setError(msg(e));
+    } finally {
+      setSavingSkill(false);
     }
   }
 
@@ -1191,6 +1213,7 @@ async function writeCopy(a: Asset) {
                   <option value="moody">Moody</option>
                 </select>
               ) : null}
+              <SkillPicker value={skillId} onChange={setSkillId} kind="image" />
             </div>
           </div>
         </div>
@@ -1204,7 +1227,9 @@ async function writeCopy(a: Asset) {
         onDelete={deleteAsset}
         onUpscale={upscale}
         onSaveSoul={saveSoul}
+        onSaveSkill={saveSkill}
         savingSoul={savingSoul}
+        savingSkill={savingSkill}
         upscaling={!!viewer && upscalingId === viewer.id}
         copied={!!viewer && copiedId === viewer.id}
       />
