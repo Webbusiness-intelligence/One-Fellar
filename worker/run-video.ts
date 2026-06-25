@@ -17,7 +17,7 @@ import { VIDEO_ENGINE_SEC, FAL, toCredits } from "@/lib/ai-ads/cost";
 import { admin, pub, BUCKET, insertAsset, resolveSouls, setProgress, type Job } from "./db";
 
 const ENGINES: VideoEngine[] = ["kling-pro", "kling-turbo", "seedance-pro", "seedance-fast"];
-const RESOLUTIONS = ["480p", "720p", "1080p", "4k"];
+const RESOLUTIONS = ["480p", "720p", "1080p"];
 
 type Brief = {
   prompt?: string;

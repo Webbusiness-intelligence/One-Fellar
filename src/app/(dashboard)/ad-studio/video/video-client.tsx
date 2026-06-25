@@ -17,7 +17,7 @@ const ENGINES = [
   { id: "kling-turbo", label: "Kling Turbo · fast", sec: 0.07 },
 ] as const;
 
-const RESOLUTIONS = ["720p", "1080p", "4k"];
+const RESOLUTIONS = ["720p", "1080p"];
 
 // Durations each engine actually supports on fal.
 function durationsFor(engine: string): number[] {
@@ -74,7 +74,7 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
   // Seedance is billed by pixels × frames, so resolution scales the cost (the base
   // rate is for 720p). Kling is flat per-second. Plus the GPT-Image-2 keyframe (~10cr)
   // per take, except Seedance reference-to-video (no keyframe).
-  const RES_MULT: Record<string, number> = { "480p": 0.45, "720p": 1, "1080p": 2.25, "4k": 5.1 };
+  const RES_MULT: Record<string, number> = { "480p": 0.45, "720p": 1, "1080p": 2.25 };
   const resMult = supportsRes ? RES_MULT[resolution] ?? 1 : 1;
   const usesReference = supportsRes && refs.length > 0;
   const perTake = engineSec * duration * resMult * 100 + (usesReference ? 0 : 10);
