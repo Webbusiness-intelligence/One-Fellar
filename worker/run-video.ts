@@ -43,6 +43,11 @@ export async function runVideoJob(job: Job): Promise<number> {
   const engine = (ENGINES as string[]).includes(String(b.engine))
     ? (b.engine as VideoEngine)
     : "seedance-fast";
+  // kling's prompt field caps at 2500 chars; seedance handles long prompts. Cap what
+  // we send (safety net so an over-long director prompt never 422s) and steer the
+  // director to stay under the budget so it writes concise-but-complete, not truncated.
+  const promptMax = engine.startsWith("kling") ? 2400 : 5000;
+  const clampPrompt = (p: string) => (p.length > promptMax ? p.slice(0, promptMax) : p);
   const duration = Math.min(Math.max(Math.round(Number(b.duration) || 5), 3), 15);
   const format = String(b.format || "9:16");
   const resolution = RESOLUTIONS.includes(String(b.resolution)) ? String(b.resolution) : "720p";
@@ -111,7 +116,7 @@ export async function runVideoJob(job: Job): Promise<number> {
   // ---- single continuous shot ----
   const makeOne = async (variation: number): Promise<boolean> => {
     const shot = cinematic
-      ? await directCinematic({ prompt: cleanPrompt, duration, aspect: format, mode: adMode, mood, subjects, variation, skill: skillText })
+      ? await directCinematic({ prompt: cleanPrompt, duration, aspect: format, mode: adMode, mood, subjects, variation, skill: skillText, promptBudget: promptMax })
       : null;
     if (cinematic) costUsd += FAL.geminiText;
     const videoPrompt = shot?.videoPrompt ?? (useReference ? referencePrompt : cleanPrompt);
@@ -139,10 +144,10 @@ export async function runVideoJob(job: Job): Promise<number> {
     await setProgress(job.id, `take ${variation + 1}: rendering`);
     const run = (a: boolean) =>
       useReference
-        ? seedanceReferenceToVideo({ imageUrls: soulUrls, prompt: videoPrompt, duration, resolution, audio: a, bitrate })
+        ? seedanceReferenceToVideo({ imageUrls: soulUrls, prompt: clampPrompt(videoPrompt), duration, resolution, audio: a, bitrate })
         : renderSceneVideo(engine, {
             startImageUrl: startUrl as string,
-            prompt: videoPrompt,
+            prompt: clampPrompt(videoPrompt),
             negativePrompt,
             duration,
             resolution,
@@ -178,7 +183,7 @@ export async function runVideoJob(job: Job): Promise<number> {
   // ---- cut-to-cut: hero base → reframe per shot → render each → stitch ----
   const makeOneCuts = async (variation: number): Promise<boolean> => {
     await setProgress(job.id, `take ${variation + 1}: directing cuts`);
-    const seq = await directCuts({ prompt: cleanPrompt, duration, minShot, aspect: format, mode: adMode, mood, subjects, variation, skill: skillText });
+    const seq = await directCuts({ prompt: cleanPrompt, duration, minShot, aspect: format, mode: adMode, mood, subjects, variation, skill: skillText, promptBudget: promptMax });
     costUsd += FAL.geminiText;
     seq.shots.forEach((s) => (s.transition = "cut")); // hard cuts only (user preference)
 
@@ -226,7 +231,7 @@ export async function runVideoJob(job: Job): Promise<number> {
     const renderShot = async (shot: (typeof seq.shots)[number], i: number): Promise<string | null> => {
       const args = {
         startImageUrl: starts[i],
-        prompt: `${seq.styleHeader}\n\n${shot.videoPrompt}`,
+        prompt: clampPrompt(`${seq.styleHeader}\n\n${shot.videoPrompt}`),
         negativePrompt: seq.negativePrompt,
         duration: shot.durationSec,
         resolution,
