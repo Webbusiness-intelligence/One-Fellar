@@ -15,6 +15,7 @@ import { routeChat } from "@/lib/ai-ads/router";
 import { planTurn } from "@/lib/ai-ads/agent";
 import { chatGenerate, chatEdit, gptImageEdit, gptImageGenerate } from "@/lib/ai-ads/chat-models";
 import { FORMAT_IDS } from "@/lib/ai-ads/generate-image";
+import { chatCredits } from "@/lib/ai-ads/cost";
 import { variationPrompts } from "@/lib/ai-ads/variations";
 import { mapLimit, withRetry } from "@/lib/ai-ads/batch";
 import { enhancePrompt } from "@/lib/ai-ads/enhance";
@@ -384,27 +385,61 @@ export async function POST(req: Request) {
             ? ("gpt-image-2" as const)
             : undefined;
         if (gptModel) genModel = gptModel;
-        const callGpt = () =>
-          refs.length
-            ? gptImageEdit({
-                prompt: usedPrompt,
-                imageUrls: refs.map((r) => r.url),
-                format: aspect,
-                quality: gptQuality,
-                num: n,
-                model: gptModel,
-              })
-            : gptImageGenerate({ prompt: usedPrompt, format: aspect, quality: gptQuality, num: n, model: gptModel });
-        outUrls = await callGpt().catch((e) => {
-          console.error("[ai-ads/chat] gpt-image failed, retrying:", e);
-          return [] as string[];
+        // === ASYNC: the reasoning is done; enqueue the resolved render for the worker
+        // (no 1–3 min held request) and return a pending assistant message. The worker
+        // (worker/run-image, resolved mode) fills in this message when it finishes. ===
+        const { data: pending } = await admin
+          .from("ad_chat_messages")
+          .insert({
+            account_id: ctx.accountId,
+            chat_id: chatId,
+            role: "assistant",
+            text: "Generating…",
+            asset_ids: [],
+            metadata: { pending: true, model: gptModel ?? genModel, aspect, suggestions: plan.suggestions },
+          })
+          .select("id")
+          .single();
+        const assistantMsgId = pending!.id as string;
+        const est = chatCredits({ variations: n, quality, isEdit: isEditTurn, engine: "gpt" });
+        const { data: jid, error: enqErr } = await admin.rpc("reserve_and_enqueue", {
+          acct: ctx.accountId,
+          creator: ctx.userId,
+          est,
+          payload: {
+            resolvedPrompt: usedPrompt,
+            model: gptModel ?? "gpt-image-1.5",
+            quality,
+            num: n,
+            refUrls: refs.map((r) => r.url),
+            aspect,
+            chatId,
+            assistantMsgId,
+            summary: decision.prompt,
+          },
+          jtype: "image",
+          fmt: "1:1",
         });
-        if (!outUrls.length) outUrls = await callGpt().catch(() => [] as string[]);
-        console.log(
-          `[ai-ads/chat] gpt-image | refs: ${
-            refs.map((r) => r.role).join(",") || "none"
-          } | n: ${n} | quality: ${gptQuality} → ${outUrls.length} image(s)`,
-        );
+        if (enqErr) {
+          const broke = /insufficient_credits/i.test(enqErr.message);
+          const txt = broke
+            ? "You're out of credits — top up to generate."
+            : "Couldn't start the render — please try again.";
+          await admin
+            .from("ad_chat_messages")
+            .update({ text: txt, metadata: { error: true } })
+            .eq("id", assistantMsgId);
+          return NextResponse.json(
+            { chatId, jobId: null, message: { id: assistantMsgId, role: "assistant", text: txt, assets: [], error: true } },
+            { status: broke ? 402 : 500 },
+          );
+        }
+        await admin.from("ad_chats").update({ updated_at: new Date().toISOString() }).eq("id", chatId);
+        return NextResponse.json({
+          chatId,
+          jobId: jid,
+          message: { id: assistantMsgId, role: "assistant", text: "Generating…", assets: [], pending: true },
+        });
       } else if (hasRefs) {
         // Product/logo are the IMAGE anchors (kept recognisable, may be tastefully
         // restyled). References are READ for their creative IDEA (vision) and used as

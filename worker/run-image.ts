@@ -1,13 +1,19 @@
-// Image job runner — the core Create generation: realism director enriches the
-// prompt, gpt-image renders N variations (gpt-image-2 when souls are referenced
-// or quality=Best, else gpt-image-1.5), composing any @-referenced Soul IDs.
-// Attaches ad_assets to the claimed job; returns actual credit cost.
+// Image job runner. Two brief shapes:
+//  • SIMPLE (legacy /jobs image): { prompt, quality, format, variations, soulIds, mood, realism }
+//    → realism director enriches + souls resolved here.
+//  • RESOLVED (from the chat route, which already did planTurn/refs/usedPrompt):
+//    { resolvedPrompt, model, quality, num, refUrls, aspect, chatId, assistantMsgId, summary }
+//    → just execute gpt-image with the decided prompt/model.
+// Either way: upload assets to the claimed job, finalize the chat message, return credits.
 import { gptImageEdit, gptImageGenerate } from "@/lib/ai-ads/chat-models";
 import { directImage } from "@/lib/ai-ads/image-director";
 import { gptImageUsd, FAL, toCredits } from "@/lib/ai-ads/cost";
 import { admin, BUCKET, insertAsset, resolveSouls, setProgress, type Job } from "./db";
 
+type GptModel = "gpt-image-1.5" | "gpt-image-2";
+
 type Brief = {
+  // simple mode
   prompt?: string;
   quality?: "standard" | "hd" | "best";
   format?: string;
@@ -15,50 +21,76 @@ type Brief = {
   soulIds?: string[];
   mood?: string;
   realism?: boolean;
+  // resolved mode
+  resolvedPrompt?: string;
+  model?: string;
+  num?: number;
+  refUrls?: string[];
+  aspect?: string;
+  summary?: string;
+  // chat linkage
   chatId?: string;
+  assistantMsgId?: string;
 };
 
 export async function runImageJob(job: Job): Promise<number> {
   const b = (job.brief ?? {}) as Brief;
-  const prompt = String(b.prompt ?? "").trim();
-  if (!prompt) throw new Error("Type a message");
-
   const quality: "standard" | "hd" | "best" = (["standard", "hd", "best"] as const).includes(
     b.quality as "standard" | "hd" | "best",
   )
     ? (b.quality as "standard" | "hd" | "best")
     : "standard";
-  const format = String(b.format || "1:1");
-  const variations = Math.min(Math.max(Number(b.variations) || 1, 1), 8);
-  const realism = b.realism !== false;
-  const mood = String(b.mood ?? "auto").slice(0, 40);
-  const soulIds = Array.isArray(b.soulIds) ? b.soulIds.filter((x) => typeof x === "string").slice(0, 4) : [];
-
-  const { chosen, nameByHandle } = await resolveSouls(job.account_id, soulIds, prompt);
-  const soulUrls = chosen.map((c) => c.url);
-  const cleanPrompt = prompt.replace(/@([a-zA-Z0-9_-]+)/g, (_, h: string) => nameByHandle[h.toLowerCase()] ?? h);
-
-  await setProgress(job.id, "composing prompt");
-  const subjects = chosen.length ? chosen.map((c) => ({ tag: c.name, desc: c.name, kind: c.kind })) : undefined;
-  const concept = realism
-    ? await directImage({ prompt: cleanPrompt, mood, aspect: format, subjects })
-    : cleanPrompt;
-  const usedPrompt = `${concept} No added text, captions, watermark or logo.`;
-
-  const gptModel = chosen.length || quality === "best" ? "gpt-image-2" : "gpt-image-1.5";
   const gptQuality = quality === "standard" ? "low" : quality === "hd" ? "medium" : "high";
+  const resolved = typeof b.resolvedPrompt === "string" && b.resolvedPrompt.trim().length > 0;
+
+  let usedPrompt: string;
+  let gptModel: GptModel;
+  let refUrls: string[];
+  let num: number;
+  let format: string;
+  let metaPrompt: string;
+  let realismCharged = false;
+
+  if (resolved) {
+    usedPrompt = b.resolvedPrompt!; // already includes the ref-role guide from the route
+    gptModel = b.model === "gpt-image-2" ? "gpt-image-2" : "gpt-image-1.5";
+    refUrls = Array.isArray(b.refUrls) ? b.refUrls.filter((x) => typeof x === "string") : [];
+    num = Math.min(Math.max(Number(b.num) || 1, 1), 8);
+    format = String(b.aspect || b.format || "1:1");
+    metaPrompt = (b.summary || usedPrompt).slice(0, 200);
+  } else {
+    const prompt = String(b.prompt ?? "").trim();
+    if (!prompt) throw new Error("Type a message");
+    format = String(b.format || "1:1");
+    num = Math.min(Math.max(Number(b.variations) || 1, 1), 8);
+    const realism = b.realism !== false;
+    realismCharged = realism;
+    const mood = String(b.mood ?? "auto").slice(0, 40);
+    const soulIds = Array.isArray(b.soulIds) ? b.soulIds.filter((x) => typeof x === "string").slice(0, 4) : [];
+    const { chosen, nameByHandle } = await resolveSouls(job.account_id, soulIds, prompt);
+    refUrls = chosen.map((c) => c.url);
+    const cleanPrompt = prompt.replace(/@([a-zA-Z0-9_-]+)/g, (_, h: string) => nameByHandle[h.toLowerCase()] ?? h);
+    metaPrompt = cleanPrompt;
+    await setProgress(job.id, "composing prompt");
+    const subjects = chosen.length ? chosen.map((c) => ({ tag: c.name, desc: c.name, kind: c.kind })) : undefined;
+    const concept = realism ? await directImage({ prompt: cleanPrompt, mood, aspect: format, subjects }) : cleanPrompt;
+    usedPrompt = `${concept} No added text, captions, watermark or logo.`;
+    gptModel = chosen.length || quality === "best" ? "gpt-image-2" : "gpt-image-1.5";
+  }
 
   await setProgress(job.id, "rendering");
-  const urls = soulUrls.length
+  const urls = refUrls.length
     ? await gptImageEdit({
-        prompt: `${usedPrompt} Feature the provided reference subject(s) together, keeping each accurate and recognisable.`,
-        imageUrls: soulUrls,
+        prompt: resolved
+          ? usedPrompt
+          : `${usedPrompt} Feature the provided reference subject(s) together, keeping each accurate and recognisable.`,
+        imageUrls: refUrls,
         format,
         quality: gptQuality,
-        num: variations,
+        num,
         model: gptModel,
       })
-    : await gptImageGenerate({ prompt: usedPrompt, format, quality: gptQuality, num: variations, model: gptModel });
+    : await gptImageGenerate({ prompt: usedPrompt, format, quality: gptQuality, num, model: gptModel });
 
   const assetIds: string[] = [];
   for (let i = 0; i < urls.length; i++) {
@@ -70,26 +102,32 @@ export async function runImageJob(job: Job): Promise<number> {
       type: "image",
       storagePath: path,
       variationIndex: i,
-      metadata: { studio: "create", model: gptModel, prompt: cleanPrompt, genPrompt: usedPrompt, aspect: format, quality },
+      metadata: { studio: "create", model: gptModel, prompt: metaPrompt, genPrompt: usedPrompt, aspect: format, quality },
     });
     if (id) assetIds.push(id);
   }
   const made = assetIds.length;
-  console.log(`[worker] image ${gptModel} | ${gptQuality} | ${made}/${variations} | "${cleanPrompt.slice(0, 50)}"`);
+  console.log(`[worker] image ${gptModel} | ${gptQuality} | ${made}/${num} | "${metaPrompt.slice(0, 50)}"`);
   if (!made) throw new Error("Image generation failed");
 
-  // Append the assistant message so the Create thread reads as a conversation
-  // (the GET /chat/:id route resolves asset_ids → asset URLs).
-  if (b.chatId) {
-    const caption = made > 1 ? `Here are ${made} variations.` : "Here you go.";
+  // Finalize the chat thread: update the route's pending assistant message, or insert
+  // one (the simple /jobs path doesn't pre-create one).
+  const caption = made > 1 ? `Here are ${made} variations.` : "Here you go.";
+  const meta = { model: gptModel, aspect: format, quality, pending: false };
+  if (b.assistantMsgId) {
+    await admin
+      .from("ad_chat_messages")
+      .update({ text: caption, asset_ids: assetIds, metadata: meta })
+      .eq("id", b.assistantMsgId);
+  } else if (b.chatId) {
     await admin.from("ad_chat_messages").insert({
       account_id: job.account_id,
       chat_id: b.chatId,
       role: "assistant",
       text: caption,
       asset_ids: assetIds,
-      metadata: { model: gptModel, aspect: format, quality },
+      metadata: meta,
     });
   }
-  return toCredits(variations * gptImageUsd(quality) + (realism ? FAL.geminiText : 0));
+  return toCredits(num * gptImageUsd(quality) + (realismCharged ? FAL.geminiText : 0));
 }
