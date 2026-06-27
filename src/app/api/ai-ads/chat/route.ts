@@ -80,6 +80,7 @@ export async function POST(req: Request) {
     const realism = String(form.get("realism") ?? "true") !== "false";
     const mood = String(form.get("mood") ?? "auto").slice(0, 40);
     const skillId = String(form.get("skillId") ?? "").trim() || null;
+    const enhancedPrompt = String(form.get("enhancedPrompt") ?? "").trim();
     const anyFile =
       ["products", "references"].some((k) =>
         form.getAll(k).some((f) => f instanceof File && (f as File).size > 0),
@@ -351,7 +352,7 @@ export async function POST(req: Request) {
         const realismApplies = realism && !isEditTurn && !wantsText;
         const skill =
           skillId && !isEditTurn && !wantsText ? await resolveSkill(admin, skillId, ctx.accountId) : null;
-        const useDirector = realismApplies || !!skill;
+        const useDirector = (realismApplies || !!skill) && !enhancedPrompt;
         let conceptForGpt = conceptBase;
         if (useDirector) {
           const cleanText = text.replace(
@@ -369,7 +370,9 @@ export async function POST(req: Request) {
             skill: skill ? skillAddendum(skill) : undefined,
           });
         }
-        usedPrompt = isEditTurn
+        usedPrompt = enhancedPrompt
+          ? `${enhancedPrompt}${guide}${safeMargins}`
+          : isEditTurn
           ? `${conceptBase}.${guide} Preserve the existing layout, subject, colours and any existing text exactly — change ONLY what was asked.${safeMargins}`
           : wantsText
             ? `${conceptBase}.${guide} Design a complete, premium, magazine-quality advertisement: ` +

@@ -32,6 +32,8 @@ type Brief = {
   cuts?: boolean;
   soulIds?: string[];
   skillId?: string;
+  enhancedPrompt?: string; // user-edited director prompt — used verbatim (single shot)
+  enhancedKeyframe?: string;
   startImageUrl?: string; // pre-uploaded by the enqueue route
 };
 
@@ -115,13 +117,15 @@ export async function runVideoJob(job: Job): Promise<number> {
 
   // ---- single continuous shot ----
   const makeOne = async (variation: number): Promise<boolean> => {
-    const shot = cinematic
+    const shot = cinematic && !b.enhancedPrompt
       ? await directCinematic({ prompt: cleanPrompt, duration, aspect: format, mode: adMode, mood, subjects, variation, skill: skillText, promptBudget: promptMax })
       : null;
-    if (cinematic) costUsd += FAL.geminiText;
-    const videoPrompt = shot?.videoPrompt ?? (useReference ? referencePrompt : cleanPrompt);
+    if (cinematic && !b.enhancedPrompt) costUsd += FAL.geminiText;
+    const videoPrompt = b.enhancedPrompt || shot?.videoPrompt || (useReference ? referencePrompt : cleanPrompt);
     const negativePrompt = shot?.negativePrompt;
-    const keyframePrompt = shot?.keyframePrompt ?? `${cleanPrompt}. No added text, captions or watermark.`;
+    const keyframePrompt = b.enhancedPrompt
+      ? b.enhancedKeyframe || `${cleanPrompt}. No added text, captions or watermark.`
+      : shot?.keyframePrompt ?? `${cleanPrompt}. No added text, captions or watermark.`;
 
     let startUrl: string | null = b.startImageUrl ?? null;
     if (!useReference && !startUrl) {

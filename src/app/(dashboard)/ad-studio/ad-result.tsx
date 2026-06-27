@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Heart, Copy, Download, Trash2, Check, X, Wand2, Maximize2, ImagePlus, Loader2, Frame, Scissors, LayoutGrid, Fingerprint } from "lucide-react";
+import { Heart, Copy, Download, Trash2, Check, X, Wand2, Maximize2, ImagePlus, Loader2, Frame, Scissors, LayoutGrid, Fingerprint, FileText } from "lucide-react";
 
 const REFRAME_FORMATS = ["1:1", "4:5", "9:16", "16:9", "4:3", "3:4"];
 
@@ -156,6 +156,22 @@ export function Lightbox({
   const [showSoul, setShowSoul] = useState(false);
   const [soulName, setSoulName] = useState("");
   const [soulKind, setSoulKind] = useState("character");
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [promptText, setPromptText] = useState("");
+  const [promptLoading, setPromptLoading] = useState(false);
+  const loadPrompt = async (id: string) => {
+    setShowPrompt(true);
+    setPromptLoading(true);
+    try {
+      const r = await fetch(`/api/ai-ads/assets/${id}/prompt`);
+      const j = (await r.json()) as { prompt?: string };
+      setPromptText(j.prompt || "(no prompt stored)");
+    } catch {
+      setPromptText("Couldn't load the prompt.");
+    } finally {
+      setPromptLoading(false);
+    }
+  };
   useEffect(() => {
     if (!item) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -195,6 +211,9 @@ export function Lightbox({
             </ActionIcon>
             <ActionIcon onClick={() => onCopy(item)} title={copied ? "Copied" : "Copy prompt"}>
               {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
+            </ActionIcon>
+            <ActionIcon onClick={() => loadPrompt(item.id)} title="View the full prompt sent to the model">
+              <FileText className="size-4" />
             </ActionIcon>
             {onUpscale ? (
               <ActionIcon
@@ -336,6 +355,55 @@ export function Lightbox({
         >
           <X className="size-4" />
         </button>
+        {showPrompt ? (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowPrompt(false);
+            }}
+          >
+            <div
+              className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-border bg-card p-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <FileText className="size-4 text-primary" /> Full prompt sent to the model
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowPrompt(false)}
+                  aria-label="Close"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+              {promptLoading ? (
+                <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin text-primary" /> Loading…
+                </div>
+              ) : (
+                <>
+                  <textarea
+                    readOnly
+                    value={promptText}
+                    rows={14}
+                    className="w-full flex-1 resize-none rounded-lg border border-border bg-background p-3 font-mono text-[12px] leading-relaxed text-foreground outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard?.writeText(promptText)}
+                    className="mt-2 flex items-center gap-1.5 self-end rounded-lg border border-border px-3 py-1.5 text-[12px] text-foreground/80 hover:text-foreground"
+                  >
+                    <Copy className="size-3.5" /> Copy
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

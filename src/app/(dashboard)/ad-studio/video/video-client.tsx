@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Sparkles, Plus, Loader2, Trash2, X, ChevronLeft, ChevronRight, Volume2, VolumeX, Scissors } from "lucide-react";
 import { waitForJob } from "@/lib/ai-ads/wait-job";
 import { SkillPicker } from "../skill-picker";
+import { PromptEnhancer } from "../prompt-enhancer";
 import { MentionTextarea } from "../mention-textarea";
 import { GeneratingPanel } from "../generating";
 
@@ -46,6 +47,12 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
   const [cuts, setCuts] = useState(false);
   const [mood, setMood] = useState("auto");
   const [skillId, setSkillId] = useState<string | null>(null);
+  const [enhanced, setEnhanced] = useState<string | null>(null);
+  const [enhancedKeyframe, setEnhancedKeyframe] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    setEnhanced(null);
+    setEnhancedKeyframe(undefined);
+  }, [prompt]);
   const [file, setFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,6 +142,10 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
       if (cinematic) fd.set("mood", mood);
       fd.set("cuts", String(cuts && cinematic));
       if (cinematic && skillId) fd.set("skillId", skillId);
+      if (enhanced) {
+        fd.set("enhancedPrompt", enhanced);
+        if (enhancedKeyframe) fd.set("enhancedKeyframe", enhancedKeyframe);
+      }
       if (refs.length) fd.set("soulIds", JSON.stringify(refs.map((r) => r.id)));
       if (file) fd.set("file", file);
       // Enqueue → the worker renders → poll for the result (no 3-min held request).
@@ -403,6 +414,40 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
                 Cuts
               </button>
               <SkillPicker value={skillId} onChange={setSkillId} kind="video" />
+              <PromptEnhancer
+                className="flex h-9 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+                getParams={() => ({
+                  kind: "video",
+                  prompt,
+                  mood: cinematic ? mood : "auto",
+                  aspect: "9:16",
+                  soulIds: refs.map((r) => r.id),
+                  skillId,
+                  engine,
+                  duration,
+                  cuts: cuts && cinematic,
+                })}
+                onUse={({ prompt: p, keyframe }) => {
+                  setEnhanced(p);
+                  setEnhancedKeyframe(keyframe);
+                }}
+              />
+              {enhanced ? (
+                <span className="flex h-9 items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-2.5 text-[12px] text-primary">
+                  ✨ edited
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEnhanced(null);
+                      setEnhancedKeyframe(undefined);
+                    }}
+                    title="Clear edited prompt"
+                    className="ml-0.5 hover:text-foreground"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ) : null}
               {cuts && duration < (engine === "kling-pro" ? 6 : engine === "kling-turbo" ? 10 : 8) ? (
                 <span className="text-[11px] text-amber-400/80">
                   needs {engine === "kling-pro" ? "6s" : engine === "kling-turbo" ? "10s" : "8s"}+ for cuts

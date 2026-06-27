@@ -51,6 +51,8 @@ export async function POST(req: Request) {
       const cuts = String(form.get("cuts") ?? "false") === "true";
       const soulIds = parseIds("soulIds");
       const skillId = String(form.get("skillId") ?? "").trim() || null;
+      const enhancedPrompt = String(form.get("enhancedPrompt") ?? "").trim().slice(0, 5000) || null;
+      const enhancedKeyframe = String(form.get("enhancedKeyframe") ?? "").trim().slice(0, 2000) || null;
 
       // A start frame is uploaded now (brief is JSON) so the worker can fetch it.
       let startImageUrl: string | undefined;
@@ -67,7 +69,7 @@ export async function POST(req: Request) {
       }
 
       fmt = "9:16";
-      brief = { prompt, engine, duration, format, resolution, audio, count, cinematic, mood, cuts, soulIds, skillId, startImageUrl };
+      brief = { prompt, engine, duration, format, resolution, audio, count, cinematic, mood, cuts, soulIds, skillId, enhancedPrompt, enhancedKeyframe, startImageUrl };
       est = count * sceneCredits({ duration, takes: 1, engine });
     } else {
       // image (Create)

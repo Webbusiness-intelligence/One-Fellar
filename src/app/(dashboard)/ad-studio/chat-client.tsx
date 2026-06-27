@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { waitForJob } from "@/lib/ai-ads/wait-job";
 import { SkillPicker } from "./skill-picker";
+import { PromptEnhancer } from "./prompt-enhancer";
 import {
   Plus,
   Loader2,
@@ -148,6 +149,8 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
   const [realism, setRealism] = useState(true);
   const [mood, setMood] = useState("auto");
   const [skillId, setSkillId] = useState<string | null>(null);
+  const [enhanced, setEnhanced] = useState<string | null>(null);
+  useEffect(() => setEnhanced(null), [input]); // editing the prompt clears a stale enhanced version
 
   const [viewer, setViewer] = useState<ViewerItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -281,6 +284,7 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
         fd.set("realism", String(realism));
         if (realism) fd.set("mood", mood);
         if (skillId) fd.set("skillId", skillId);
+        if (enhanced) fd.set("enhancedPrompt", enhanced);
         const directives = [lens, angle, lighting, look].filter(Boolean).join("; ");
         if (directives) fd.set("directives", directives);
       }
@@ -1214,6 +1218,30 @@ async function writeCopy(a: Asset) {
                 </select>
               ) : null}
               <SkillPicker value={skillId} onChange={setSkillId} kind="image" />
+              <PromptEnhancer
+                getParams={() => ({
+                  kind: "image",
+                  prompt: input,
+                  mood: realism ? mood : "auto",
+                  aspect: format !== "auto" ? format : "1:1",
+                  soulIds: selectedSouls.map((s) => s.id),
+                  skillId,
+                })}
+                onUse={({ prompt }) => setEnhanced(prompt)}
+              />
+              {enhanced ? (
+                <span className="flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-2 py-1.5 text-[12px] text-primary">
+                  ✨ edited prompt
+                  <button
+                    type="button"
+                    onClick={() => setEnhanced(null)}
+                    title="Clear edited prompt"
+                    className="ml-0.5 hover:text-foreground"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
