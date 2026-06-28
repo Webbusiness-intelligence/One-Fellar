@@ -136,7 +136,7 @@ export async function runVideoJob(job: Job): Promise<number> {
       await setProgress(job.id, `take ${variation + 1}: keyframe`);
       const out = soulUrls.length
         ? await gptImageEdit({
-            prompt: `${keyframePrompt} Feature the provided reference subject(s) together, keeping each accurate and recognisable.`,
+            prompt: `${keyframePrompt} CRITICAL: the provided reference image(s) ARE the exact characters — reproduce each one's face, identity, hair, skin tone and wardrobe PRECISELY and recognisably; do NOT invent, replace, merge or generic-ify any person. Feature them all together in the scene.`,
             imageUrls: soulUrls,
             format,
             quality: "medium",
@@ -200,7 +200,7 @@ export async function runVideoJob(job: Job): Promise<number> {
       await setProgress(job.id, `take ${variation + 1}: hero frame`);
       const out = soulUrls.length
         ? await gptImageEdit({
-            prompt: `${seq.baseKeyframePrompt} Feature the provided reference subject(s) together, keeping each accurate and recognisable.`,
+            prompt: `${seq.baseKeyframePrompt} CRITICAL: the provided reference image(s) ARE the exact characters — reproduce each one's face, identity, hair, skin tone and wardrobe PRECISELY and recognisably; do NOT invent, replace, merge or generic-ify any person. Feature them all together in the scene.`,
             imageUrls: soulUrls,
             format,
             quality: "medium",
@@ -219,12 +219,12 @@ export async function runVideoJob(job: Job): Promise<number> {
       seq.shots.map(async (shot) => {
         try {
           const out = await gptImageEdit({
-            prompt: `${shot.keyframePrompt} Keep the SAME subject, face, wardrobe, lighting and colour grade as the reference image; change ONLY the framing, angle and composition. No added text.`,
+            prompt: `${shot.keyframePrompt} CRITICAL: keep the EXACT same person(s) — identical face, identity, hair, skin tone and wardrobe — and the same lighting and colour grade as the reference image; change ONLY the framing, angle and composition. Do NOT alter, replace or generic-ify the subject. No added text.`,
             imageUrls: [base],
             format,
             quality: "medium",
             num: 1,
-            model: "gpt-image-1.5",
+            model: "gpt-image-2",
           });
           costUsd += FAL.gptImageMedium;
           return (out[0] ? await saveKeyframe(out[0]) : null) ?? base;
