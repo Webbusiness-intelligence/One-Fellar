@@ -50,6 +50,10 @@ export async function runVideoJob(job: Job): Promise<number> {
   // director to stay under the budget so it writes concise-but-complete, not truncated.
   const promptMax = engine.startsWith("kling") ? 2400 : 5000;
   const clampPrompt = (p: string) => (p.length > promptMax ? p.slice(0, promptMax) : p);
+  // i2v paths (kling, seedance image-to-video, every cut shot) get NO reference-images
+  // array, so @ImageN tags (valid only for seedance reference-to-video) make fal 422.
+  // Strip them here; identity for i2v comes from the start/keyframe image, not @tags.
+  const clampI2V = (p: string) => clampPrompt(p.replace(/@\s*Image\s*\d+/gi, "the subject"));
   const duration = Math.min(Math.max(Math.round(Number(b.duration) || 5), 3), 15);
   const format = String(b.format || "9:16");
   const resolution = RESOLUTIONS.includes(String(b.resolution)) ? String(b.resolution) : "720p";
@@ -151,7 +155,7 @@ export async function runVideoJob(job: Job): Promise<number> {
         ? seedanceReferenceToVideo({ imageUrls: soulUrls, prompt: clampPrompt(videoPrompt), duration, resolution, audio: a, bitrate })
         : renderSceneVideo(engine, {
             startImageUrl: startUrl as string,
-            prompt: clampPrompt(videoPrompt),
+            prompt: clampI2V(videoPrompt),
             negativePrompt,
             duration,
             resolution,
@@ -235,7 +239,7 @@ export async function runVideoJob(job: Job): Promise<number> {
     const renderShot = async (shot: (typeof seq.shots)[number], i: number): Promise<string | null> => {
       const args = {
         startImageUrl: starts[i],
-        prompt: clampPrompt(`${seq.styleHeader}\n\n${shot.videoPrompt}`),
+        prompt: clampI2V(`${seq.styleHeader}\n\n${shot.videoPrompt}`),
         negativePrompt: seq.negativePrompt,
         duration: shot.durationSec,
         resolution,
