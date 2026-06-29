@@ -312,13 +312,21 @@ html[data-theme="rose"] {
   body {
     @apply text-foreground;
     background-color: var(--background);
-    /* Flova-style ambient backdrop — soft neon-yellow + cool glows on the dark canvas. */
+    /* Non-flat aurora + blueprint grid so the frosted glass catches colour and reads
+     * against varied light (a flat fill makes glassmorphism invisible). Brand yellow
+     * anchors it; violet + aqua give the cards something to refract. */
     background-image:
-      radial-gradient(55% 45% at 50% -10%, rgb(245 227 29 / 0.1), transparent 62%),
-      radial-gradient(45% 45% at 100% 2%, rgb(180 200 255 / 0.05), transparent 55%),
-      radial-gradient(55% 55% at 0% 100%, rgb(245 227 29 / 0.05), transparent 60%);
+      radial-gradient(38% 40% at 14% 12%, rgb(245 227 29 / 0.22), transparent 70%),
+      radial-gradient(42% 44% at 86% 14%, rgb(150 90 255 / 0.2), transparent 72%),
+      radial-gradient(44% 42% at 80% 88%, rgb(40 200 230 / 0.16), transparent 72%),
+      radial-gradient(40% 42% at 8% 86%, rgb(245 227 29 / 0.12), transparent 70%),
+      linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px);
+    background-size:
+      100% 100%, 100% 100%, 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+    background-repeat:
+      no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat;
     background-attachment: fixed;
-    background-repeat: no-repeat;
   }
   html {
     @apply font-sans;
