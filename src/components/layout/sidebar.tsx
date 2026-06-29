@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import {
+  CreditCard,
   Crown,
   LogOut,
   Settings,
@@ -81,6 +82,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: "/ad-studio", label: "Ad Studio", icon: Sparkles },
+  { href: "/pricing", label: "Pricing", icon: CreditCard },
 ];
 
 const bottomNavItems = [

@@ -189,6 +189,7 @@ export interface Plan {
   id: "free" | "starter" | "pro" | "studio";
   name: string;
   usdPerMonth: number;
+  zarPerMonth: number; // what SA customers are charged via Paystack
   creditsPerMonth: number;
   seats: number;
   popular?: boolean;
@@ -196,20 +197,21 @@ export interface Plan {
 }
 
 export const PLANS: Plan[] = [
-  { id: "free", name: "Free", usdPerMonth: 0, creditsPerMonth: 400, seats: 1, blurb: "Try it — draft models, 720p, watermark." },
-  { id: "starter", name: "Starter", usdPerMonth: 19, creditsPerMonth: 2000, seats: 1, blurb: "All models, 1080p, no watermark." },
-  { id: "pro", name: "Pro", usdPerMonth: 49, creditsPerMonth: 6000, seats: 1, popular: true, blurb: "More credits + priority queue." },
-  { id: "studio", name: "Studio", usdPerMonth: 149, creditsPerMonth: 20000, seats: 5, blurb: "Team seats, API, fastest queue." },
+  { id: "free", name: "Free", usdPerMonth: 0, zarPerMonth: 0, creditsPerMonth: 400, seats: 1, blurb: "Try it — draft models, 720p, watermark." },
+  { id: "starter", name: "Starter", usdPerMonth: 19, zarPerMonth: 349, creditsPerMonth: 2000, seats: 1, blurb: "All models, 1080p, no watermark." },
+  { id: "pro", name: "Pro", usdPerMonth: 49, zarPerMonth: 899, creditsPerMonth: 6000, seats: 1, popular: true, blurb: "More credits + priority queue." },
+  { id: "studio", name: "Studio", usdPerMonth: 149, zarPerMonth: 2699, creditsPerMonth: 20000, seats: 5, blurb: "Team seats, API, fastest queue." },
 ];
 
 export interface CreditPack {
   id: string;
   usd: number;
+  zar: number;
   credits: number;
 }
 export const CREDIT_PACKS: CreditPack[] = [
-  { id: "pack_small", usd: 10, credits: 800 },
-  { id: "pack_large", usd: 40, credits: 3500 },
+  { id: "pack_small", usd: 10, zar: 199, credits: 800 },
+  { id: "pack_large", usd: 40, zar: 749, credits: 3500 },
 ];
 
 export const ANNUAL_DISCOUNT = 0.17; // 2 months free on annual billing
