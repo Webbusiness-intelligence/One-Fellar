@@ -168,9 +168,8 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             close button is hidden since the sidebar is always-visible. */}
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
           <Link href="/ad-studio" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Sparkles className="h-4 w-4" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/genalot-icon.png" alt="Genalot" className="h-8 w-8 shrink-0 rounded-lg" />
             <span className="whitespace-nowrap text-sm font-semibold text-foreground transition-opacity duration-200 lg:opacity-0 lg:group-hover:opacity-100">
               Genalot
             </span>
