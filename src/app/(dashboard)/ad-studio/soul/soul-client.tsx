@@ -31,11 +31,11 @@ export type SoulItem = {
 };
 
 const KINDS = [
-  { id: "character", label: "Character", icon: User },
-  { id: "product", label: "Product", icon: Package },
-  { id: "location", label: "Location", icon: MapPin },
-  { id: "prop", label: "Prop", icon: Box },
-  { id: "style", label: "Style", icon: Palette },
+  { id: "character", label: "Character", icon: User, desc: "a person or face" },
+  { id: "product", label: "Product", icon: Package, desc: "an item you sell" },
+  { id: "location", label: "Location", icon: MapPin, desc: "a place or scene" },
+  { id: "prop", label: "Prop", icon: Box, desc: "an object or graphic" },
+  { id: "style", label: "Style", icon: Palette, desc: "a look or mood" },
 ] as const;
 
 function slugify(s: string): string {
@@ -237,6 +237,10 @@ export function SoulClient({ initial }: { initial: SoulItem[] }) {
             );
           })}
         </div>
+        <p className="mt-1.5 text-[12px] text-muted-foreground">
+          {KINDS.find((x) => x.id === kind)?.label} —{" "}
+          {KINDS.find((x) => x.id === kind)?.desc}.
+        </p>
 
         {/* Mode toggle */}
         <div className="mt-3 flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 p-0.5 w-fit">
@@ -254,6 +258,19 @@ export function SoulClient({ initial }: { initial: SoulItem[] }) {
             </button>
           ))}
         </div>
+        {mode === "generate" ? (
+          <p className="mt-2 text-[12px] text-muted-foreground">
+            Already have the image — a logo, a photo, a product shot?{" "}
+            <button
+              type="button"
+              onClick={() => setMode("upload")}
+              className="font-medium text-primary hover:underline"
+            >
+              Switch to Upload
+            </button>{" "}
+            instead of generating.
+          </p>
+        ) : null}
 
         {/* Mode body */}
         <div className="mt-3">
