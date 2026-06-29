@@ -496,7 +496,7 @@ export function AdStudioClient({ initialProducts }: { initialProducts: Product[]
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
             <Sparkles className="size-5 text-primary" strokeWidth={1.75} />
-            Ad Studio
+            Genalot
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Describe the ad. We direct the scene and place your product in — kept exactly intact.

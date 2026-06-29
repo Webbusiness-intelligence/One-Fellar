@@ -19,7 +19,7 @@ import {
 import { ModeToggle } from "@/components/layout/mode-toggle";
 
 const pageTitles: Record<string, string> = {
-  "/ad-studio": "Ad Studio",
+  "/ad-studio": "Genalot",
   "/settings": "Settings",
 };
 
@@ -28,7 +28,7 @@ function getPageTitle(pathname: string): string {
   const match = Object.entries(pageTitles).find(([path]) =>
     pathname.startsWith(path),
   );
-  return match ? match[1] : "Ad Studio";
+  return match ? match[1] : "Genalot";
 }
 
 interface HeaderProps {

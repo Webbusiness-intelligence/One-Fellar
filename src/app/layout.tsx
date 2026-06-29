@@ -25,13 +25,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Ad Studio",
-    template: "%s — Ad Studio",
+    default: "Genalot — AI Ad, Image & Video Generator",
+    template: "%s — Genalot",
   },
-  description: "AI ad, image & video generator.",
+  description:
+    "Genalot is an AI studio that generates ads, images and videos for marketing, social and film — straight from a prompt.",
   robots: {
-    index: false,
-    follow: false,
+    index: true,
+    follow: true,
   },
   icons: {
     icon: [{ url: "/icon" }],

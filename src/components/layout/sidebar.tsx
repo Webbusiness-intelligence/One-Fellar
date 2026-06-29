@@ -172,7 +172,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               <Sparkles className="h-4 w-4" />
             </div>
             <span className="whitespace-nowrap text-sm font-semibold text-foreground transition-opacity duration-200 lg:opacity-0 lg:group-hover:opacity-100">
-              Ad Studio
+              Genalot
             </span>
           </Link>
           <button
