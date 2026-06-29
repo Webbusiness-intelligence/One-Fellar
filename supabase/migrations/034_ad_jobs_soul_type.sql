@@ -9,7 +9,9 @@
 -- Re-runnable.
 -- ============================================================
 
+-- NOTE: keep 'ugc' — the original constraint (migration 024) allowed it and rows
+-- with type='ugc' exist; dropping it fails validation (23514).
 ALTER TABLE ad_jobs DROP CONSTRAINT IF EXISTS ad_jobs_type_check;
 ALTER TABLE ad_jobs
   ADD CONSTRAINT ad_jobs_type_check
-  CHECK (type IN ('image', 'video', 'soul'));
+  CHECK (type IN ('image', 'video', 'ugc', 'soul'));
