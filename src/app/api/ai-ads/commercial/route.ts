@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { buildStoryboard } from "@/lib/ai-ads/video-storyboard";
 import { gptImageEdit } from "@/lib/ai-ads/chat-models";
 import { klingImageToVideo } from "@/lib/ai-ads/video-models";

@@ -11,7 +11,7 @@ import { NextResponse } from "next/server";
 import sharp from "sharp";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { directAdScenes } from "@/lib/ai-ads/director";
 import { AD_MODELS, FORMAT_DIMS, FORMAT_IDS } from "@/lib/ai-ads/generate-image";
 import { lockedComposite } from "@/lib/ai-ads/locked-composite";

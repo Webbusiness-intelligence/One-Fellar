@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { BUILTIN_SKILLS, type Skill, type SkillKind } from "@/lib/ai-ads/skills";
 
 function slugify(s: string): string {

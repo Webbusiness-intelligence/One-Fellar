@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { falRun } from "@/lib/ai-ads/fal";
 
 const BUCKET = "ad-studio";

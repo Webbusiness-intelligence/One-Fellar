@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { directImage } from "@/lib/ai-ads/image-director";
 import { directCinematic, directCuts, type Subject } from "@/lib/ai-ads/cinematic-director";
 import { resolveSkill } from "@/lib/ai-ads/resolve-skill";

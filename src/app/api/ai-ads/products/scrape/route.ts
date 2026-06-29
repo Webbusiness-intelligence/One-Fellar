@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import sharp from "sharp";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { scrapeProduct } from "@/lib/ai-ads/scrape";
 import { storeProductImage } from "@/lib/ai-ads/product-image";
 

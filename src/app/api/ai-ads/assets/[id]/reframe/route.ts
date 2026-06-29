@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { reframeImage } from "@/lib/ai-ads/reframe";
 import { FORMAT_IDS } from "@/lib/ai-ads/generate-image";
 

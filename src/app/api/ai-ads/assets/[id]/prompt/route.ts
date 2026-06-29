@@ -4,7 +4,7 @@
 import { NextResponse } from "next/server";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {

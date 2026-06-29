@@ -7,7 +7,7 @@ import sharp from "sharp";
 import { randomUUID } from "node:crypto";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sceneCredits, chatCredits } from "@/lib/ai-ads/cost";
 
 const BUCKET = "ad-studio";

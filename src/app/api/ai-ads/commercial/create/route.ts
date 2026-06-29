@@ -10,7 +10,7 @@ import sharp from "sharp";
 import { randomUUID } from "node:crypto";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { buildCommercial } from "@/lib/ai-ads/commercial-director";
 import { FORMAT_IDS } from "@/lib/ai-ads/generate-image";
 

@@ -9,7 +9,7 @@ import sharp from "sharp";
 import { randomUUID } from "node:crypto";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { designPoster, STYLE_GUIDE } from "@/lib/ai-ads/poster-director";
 import { gptImageEdit, gptImageGenerate, chatGenerate } from "@/lib/ai-ads/chat-models";
 import { FORMAT_IDS } from "@/lib/ai-ads/generate-image";

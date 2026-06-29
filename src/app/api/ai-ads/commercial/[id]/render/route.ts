@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { gptImageEdit } from "@/lib/ai-ads/chat-models";
 import { renderSceneVideo, type VideoEngine } from "@/lib/ai-ads/video-models";
 import { mapLimit } from "@/lib/ai-ads/batch";

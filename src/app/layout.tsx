@@ -25,10 +25,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "wacrm",
-    template: "%s — wacrm",
+    default: "Ad Studio",
+    template: "%s — Ad Studio",
   },
-  description: "Self-hostable CRM template for WhatsApp.",
+  description: "AI ad, image & video generator.",
   robots: {
     index: false,
     follow: false,

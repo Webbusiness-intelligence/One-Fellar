@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { Skill } from "@/lib/ai-ads/skills";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;

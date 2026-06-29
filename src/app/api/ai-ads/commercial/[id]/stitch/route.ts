@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/automations/admin-client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { stitchVideos, muxTracks, probeDuration } from "@/lib/ai-ads/stitch";
 import { generateMusic, textToSpeech } from "@/lib/ai-ads/audio-models";
 import { writeVoiceover } from "@/lib/ai-ads/voiceover";
