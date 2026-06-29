@@ -1,11 +1,15 @@
-// Credits = an exact linear conversion of real fal spend. 1 credit = $0.01.
-// The per-action estimators below sum the ACTUAL fal calls each generation makes
-// (model + extras like best-of-N, upscale, backdrop), so the credit number on a
-// button reflects exactly what that generation costs us on fal.
+// Credit = $0.01 of customer spend. The per-action estimators below sum the ACTUAL
+// fal calls a generation makes; `toCredits` then marks that real cost up by MARGIN, so
+// the credits CHARGED to a user are the sell price (cost × MARGIN), not raw cost. The
+// internal cost meter (assetCredits, below) stays at TRUE cost for accounting.
 
-export const CREDIT_USD = 0.01; // $0.01 per credit
-export const toCredits = (usd: number) => Math.max(1, Math.round(usd / CREDIT_USD));
-export const MONTHLY_BUDGET_CREDITS = 5000; // = $50
+export const CREDIT_USD = 0.01; // $0.01 per credit (customer value)
+// Markup on real model cost → gross margin. 2.3× ≈ 57% margin, and still lands at/below
+// Higgsfield's effective consumer price (our base cost is lower). Tune this ONE number
+// to move all generation pricing at once.
+export const MARGIN = 2.3;
+export const toCredits = (usd: number) => Math.max(1, Math.round((usd * MARGIN) / CREDIT_USD));
+export const MONTHLY_BUDGET_CREDITS = 5000; // internal soft budget cap
 
 // Real per-call fal prices (USD) for the models/ops we use.
 export const FAL = {
@@ -174,5 +178,39 @@ const ASSET_USD: Record<string, number> = {
 };
 export function assetCredits(model: string | null | undefined): number {
   const usd = model && model in ASSET_USD ? ASSET_USD[model] : 0.05;
-  return usd / CREDIT_USD; // keep fractional; round on totals
+  return usd / CREDIT_USD; // TRUE cost (no margin) — internal usage meter only
 }
+
+// ---- Plans & packs — single source of truth for billing tiers. ----
+// Credits are priced at ≈ $0.01 each; higher tiers bundle more credits per $ (volume
+// discount). Generations are charged cost×MARGIN credits, so a plan's real gross margin
+// is ~MARGIN at the entry tier and a bit thinner at volume tiers, by design.
+export interface Plan {
+  id: "free" | "starter" | "pro" | "studio";
+  name: string;
+  usdPerMonth: number;
+  creditsPerMonth: number;
+  seats: number;
+  popular?: boolean;
+  blurb: string;
+}
+
+export const PLANS: Plan[] = [
+  { id: "free", name: "Free", usdPerMonth: 0, creditsPerMonth: 400, seats: 1, blurb: "Try it — draft models, 720p, watermark." },
+  { id: "starter", name: "Starter", usdPerMonth: 19, creditsPerMonth: 2000, seats: 1, blurb: "All models, 1080p, no watermark." },
+  { id: "pro", name: "Pro", usdPerMonth: 49, creditsPerMonth: 6000, seats: 1, popular: true, blurb: "More credits + priority queue." },
+  { id: "studio", name: "Studio", usdPerMonth: 149, creditsPerMonth: 20000, seats: 5, blurb: "Team seats, API, fastest queue." },
+];
+
+export interface CreditPack {
+  id: string;
+  usd: number;
+  credits: number;
+}
+export const CREDIT_PACKS: CreditPack[] = [
+  { id: "pack_small", usd: 10, credits: 800 },
+  { id: "pack_large", usd: 40, credits: 3500 },
+];
+
+export const ANNUAL_DISCOUNT = 0.17; // 2 months free on annual billing
+export const PACK_EXPIRY_DAYS = 90; // top-up credits expire (breakage improves margin)
