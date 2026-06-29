@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { sceneCredits, chatCredits } from "@/lib/ai-ads/cost";
+import { sceneCredits, chatCredits, FAL, toCredits } from "@/lib/ai-ads/cost";
 
 const BUCKET = "ad-studio";
 const RESOLUTIONS = ["480p", "720p", "1080p", "4k"];
@@ -20,7 +20,8 @@ export async function POST(req: Request) {
     const pub = (p: string) => admin.storage.from(BUCKET).getPublicUrl(p).data.publicUrl;
 
     const form = await req.formData();
-    const kind = String(form.get("kind") || "image") === "video" ? "video" : "image";
+    const kindRaw = String(form.get("kind") || "image");
+    const kind = kindRaw === "video" || kindRaw === "soul" ? kindRaw : "image";
     const parseIds = (k: string): string[] => {
       try {
         const r = JSON.parse(String(form.get(k) ?? "[]"));
@@ -71,6 +72,29 @@ export async function POST(req: Request) {
       fmt = "9:16";
       brief = { prompt, engine, duration, format, resolution, audio, count, cinematic, mood, cuts, soulIds, skillId, enhancedPrompt, enhancedKeyframe, startImageUrl };
       est = count * sceneCredits({ duration, takes: 1, engine });
+    } else if (kind === "soul") {
+      const description = String(form.get("description") ?? "").trim().slice(0, 600);
+      if (!description) return NextResponse.json({ error: "Describe what to create" }, { status: 400 });
+      const soulKind = String(form.get("soulKind") ?? "character").slice(0, 20);
+      const count = Math.min(Math.max(Number(form.get("count")) || 1, 1), 6);
+      const model = String(form.get("model")) === "gpt-image-2" ? "gpt-image-2" : "gpt-image-1.5";
+      const quality = (["low", "medium", "high"] as const).includes(String(form.get("quality")) as never)
+        ? (String(form.get("quality")) as "low" | "medium" | "high")
+        : "high";
+      const refIds = parseIds("soulIds");
+      let refUrls: string[] = [];
+      if (refIds.length) {
+        const { data } = await admin
+          .from("ad_soul_ids")
+          .select("storage_path")
+          .in("id", refIds)
+          .eq("account_id", ctx.accountId);
+        refUrls = (data ?? []).map((s) => pub(s.storage_path as string));
+      }
+      fmt = "1:1";
+      brief = { description, kind: soulKind, count, model, quality, refUrls };
+      const per = quality === "high" ? FAL.gptImageHigh : quality === "medium" ? FAL.gptImageMedium : FAL.gptImageLow;
+      est = toCredits(count * per);
     } else {
       // image (Create)
       const prompt = String(form.get("text") ?? form.get("prompt") ?? "").trim();

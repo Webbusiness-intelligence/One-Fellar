@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Sparkles,
   Upload,
@@ -19,6 +19,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
+import { waitForJob } from "@/lib/ai-ads/wait-job";
 import { MentionTextarea } from "../mention-textarea";
 import { GeneratingPanel } from "../generating";
 
@@ -39,6 +40,8 @@ const KINDS = [
   { id: "style", label: "Style", icon: Palette, desc: "a look or mood" },
   { id: "logo", label: "Logo / Graphic", icon: Shapes, desc: "a logo or flat graphic" },
 ] as const;
+
+const DRAFT_KEY = "genalot.soulDraft";
 
 function slugify(s: string): string {
   return (
@@ -79,37 +82,124 @@ export function SoulClient({ initial }: { initial: SoulItem[] }) {
   async function create() {
     setError(null);
     if (!name.trim()) return setError("Give it a name");
-    if (mode === "generate" && !description.trim()) return setError("Describe what to create");
-    if (mode === "upload" && !file) return setError("Choose an image to upload");
+
+    // Upload registers instantly — keep it synchronous.
+    if (mode === "upload") {
+      if (!file) return setError("Choose an image to upload");
+      setCreating(true);
+      try {
+        const fd = new FormData();
+        fd.set("name", name.trim());
+        fd.set("kind", kind);
+        fd.set("source", "upload");
+        fd.set("file", file);
+        const res = await fetch("/api/ai-ads/soul", { method: "POST", body: fd });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Failed");
+        setItems((xs) => [json.soul as SoulItem, ...xs]);
+        resetForm();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed");
+      } finally {
+        setCreating(false);
+      }
+      return;
+    }
+
+    // Generate → background job: the worker keeps going if you leave/refresh,
+    // and we re-attach to it (and its candidates) on return.
+    if (!description.trim()) return setError("Describe what to create");
     setCreating(true);
+    setCandidates([]);
     try {
       const fd = new FormData();
-      fd.set("name", name.trim());
-      fd.set("kind", kind);
-      fd.set("source", mode === "generate" ? "prompt" : "upload");
+      fd.set("kind", "soul");
+      fd.set("soulKind", kind);
+      fd.set("description", description.trim());
+      fd.set("count", String(count));
       const isV2 = modelSel === "gpt-image-2";
       fd.set("model", isV2 ? "gpt-image-2" : "gpt-image-1.5");
       fd.set("quality", isV2 ? "high" : modelSel.replace("1.5-", ""));
-      if (mode === "generate") fd.set("count", String(count));
-      if (description.trim()) fd.set("description", description.trim());
       if (refs.length) fd.set("soulIds", JSON.stringify(refs.map((r) => r.id)));
-      if (file) fd.set("file", file);
-      const res = await fetch("/api/ai-ads/soul", { method: "POST", body: fd });
+      const res = await fetch("/api/ai-ads/jobs", { method: "POST", body: fd });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed");
-      if (json.candidates) {
-        // Keep the name/kind so the picked candidate can be saved.
-        setCandidates(json.candidates as string[]);
-      } else {
-        setItems((xs) => [json.soul as SoulItem, ...xs]);
-        resetForm();
-      }
+      if (!res.ok || !json.jobId) throw new Error(json.error || "Failed");
+      saveDraft(json.jobId);
+      await trackJob(json.jobId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
-    } finally {
       setCreating(false);
     }
   }
+
+  function saveDraft(jobId: string) {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ jobId, name, kind, count, description }));
+    } catch {
+      /* ignore */
+    }
+  }
+  function clearDraft() {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+  async function trackJob(jobId: string) {
+    setCreating(true);
+    const res = await waitForJob(jobId);
+    if (res.status === "failed") {
+      setError(res.error || "Generation failed");
+      clearDraft();
+      setCreating(false);
+      return;
+    }
+    if (res.status === "timeout") {
+      setError("Timed out — try again");
+      setCreating(false);
+      return;
+    }
+    try {
+      const r = await fetch(`/api/ai-ads/jobs/${jobId}`);
+      const j = JSON.parse(await r.text()) as { assets?: { url: string }[] };
+      setCandidates((j.assets ?? []).map((a) => a.url));
+    } catch {
+      /* ignore */
+    }
+    setCreating(false);
+  }
+
+  // Re-attach to any soul generation left running or unsaved (survives refresh
+  // and navigating away + back).
+  useEffect(() => {
+    let draft: { jobId?: string; name?: string; kind?: string; count?: number; description?: string } | null = null;
+    try {
+      draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+    } catch {
+      draft = null;
+    }
+    if (!draft?.jobId) return;
+    const jobId = draft.jobId;
+    if (draft.name) setName(draft.name);
+    if (draft.kind) setKind(draft.kind);
+    if (draft.count) setCount(draft.count);
+    if (draft.description) setDescription(draft.description);
+    setMode("generate");
+    (async () => {
+      try {
+        const r = await fetch(`/api/ai-ads/jobs/${jobId}`);
+        if (!r.ok) return clearDraft();
+        const j = JSON.parse(await r.text()) as { status?: string; assets?: { url: string }[] };
+        if (j.status === "completed") setCandidates((j.assets ?? []).map((a) => a.url));
+        else if (j.status === "queued" || j.status === "processing") trackJob(jobId);
+        else clearDraft();
+      } catch {
+        /* keep draft; retry next mount */
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function resetForm() {
     setName("");
@@ -118,6 +208,7 @@ export function SoulClient({ initial }: { initial: SoulItem[] }) {
     setRefs([]);
     setAtQuery(null);
     setCandidates([]);
+    clearDraft();
   }
 
   // Choose the primary variation (it gets the clean @handle) but KEEP the rest —
@@ -423,7 +514,10 @@ export function SoulClient({ initial }: { initial: SoulItem[] }) {
             </div>
             <button
               type="button"
-              onClick={() => setCandidates([])}
+              onClick={() => {
+                setCandidates([]);
+                clearDraft();
+              }}
               disabled={savingIdx !== null}
               className="text-[12px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
             >

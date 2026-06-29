@@ -11,6 +11,7 @@ import { randomUUID } from "node:crypto";
 import { claimJob, settle, refund, requeueStale, type Job } from "./db";
 import { runImageJob } from "./run-image";
 import { runVideoJob } from "./run-video";
+import { runSoulJob } from "./run-soul";
 
 const WORKER_ID = `w-${process.pid}-${randomUUID().slice(0, 8)}`;
 const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY) || 3;
@@ -29,6 +30,7 @@ async function processJob(job: Job): Promise<void> {
     let actual: number;
     if (job.type === "video") actual = await runVideoJob(job);
     else if (job.type === "image") actual = await runImageJob(job);
+    else if (job.type === "soul") actual = await runSoulJob(job);
     else throw new Error(`unknown job type: ${job.type}`);
     await settle(job.id, actual);
     console.log(`[worker] ✓ ${job.type} ${job.id} · ${actual}cr · ${((Date.now() - started) / 1000).toFixed(0)}s`);
