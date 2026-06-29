@@ -216,3 +216,33 @@ export const CREDIT_PACKS: CreditPack[] = [
 
 export const ANNUAL_DISCOUNT = 0.17; // 2 months free on annual billing
 export const PACK_EXPIRY_DAYS = 90; // top-up credits expire (breakage improves margin)
+
+// ---- Plan limits — the free tier is capped; ANY paid plan unlocks full quality.
+// (Platform owner: set your account's plan to 'studio' so you're not capped.) ----
+export interface PlanLimits {
+  maxImageQuality: "standard" | "hd" | "best";
+  maxVideoResolution: "480p" | "720p" | "1080p";
+  maxVariations: number;
+  watermark: boolean;
+}
+export function planLimits(plan: string | null | undefined): PlanLimits {
+  return plan && plan !== "free"
+    ? { maxImageQuality: "best", maxVideoResolution: "1080p", maxVariations: 8, watermark: false }
+    : { maxImageQuality: "standard", maxVideoResolution: "720p", maxVariations: 2, watermark: true };
+}
+
+const Q_ORDER = ["standard", "hd", "best"] as const;
+export function clampQuality(
+  plan: string | null | undefined,
+  q: "standard" | "hd" | "best",
+): "standard" | "hd" | "best" {
+  const max = planLimits(plan).maxImageQuality;
+  return Q_ORDER.indexOf(q) <= Q_ORDER.indexOf(max) ? q : max;
+}
+
+const R_ORDER = ["480p", "720p", "1080p", "4k"] as const;
+export function clampResolution(plan: string | null | undefined, r: string): string {
+  const max = planLimits(plan).maxVideoResolution;
+  const ri = R_ORDER.indexOf(r as (typeof R_ORDER)[number]);
+  return ri >= 0 && ri <= R_ORDER.indexOf(max) ? r : max;
+}

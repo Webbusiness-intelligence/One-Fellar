@@ -14,7 +14,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { routeChat } from "@/lib/ai-ads/router";
 import { planTurn } from "@/lib/ai-ads/agent";
 import { FORMAT_IDS } from "@/lib/ai-ads/generate-image";
-import { chatCredits } from "@/lib/ai-ads/cost";
+import { chatCredits, planLimits, clampQuality } from "@/lib/ai-ads/cost";
 import { directImage } from "@/lib/ai-ads/image-director";
 import { resolveSkill } from "@/lib/ai-ads/resolve-skill";
 import { skillAddendum } from "@/lib/ai-ads/skills";
@@ -45,12 +45,21 @@ export async function POST(req: Request) {
     const form = await req.formData();
     const text = String(form.get("text") ?? "").trim();
     let chatId = (form.get("chatId") as string) || null;
-    const variations = Math.min(Math.max(Number(form.get("variations")) || 1, 1), 12);
-    const quality = (["standard", "hd", "best"] as const).includes(
+    let variations = Math.min(Math.max(Number(form.get("variations")) || 1, 1), 12);
+    let quality = (["standard", "hd", "best"] as const).includes(
       String(form.get("quality") ?? "") as "standard" | "hd" | "best",
     )
       ? (String(form.get("quality")) as "standard" | "hd" | "best")
       : "standard";
+    // Free-tier gating (server-authoritative): cap quality + variations to the plan.
+    const { data: planRow } = await admin
+      .from("accounts")
+      .select("plan")
+      .eq("id", ctx.accountId)
+      .maybeSingle();
+    const plan = (planRow?.plan as string) ?? "free";
+    quality = clampQuality(plan, quality);
+    variations = Math.min(variations, planLimits(plan).maxVariations);
     // GPT image is the engine everywhere now (kept silent in the UI); nano stays as
     // a reachable fallback only if explicitly requested.
     const engine = String(form.get("engine") ?? "gpt") === "nano" ? "nano" : "gpt";

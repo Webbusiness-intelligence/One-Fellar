@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { sceneCredits, chatCredits, FAL, toCredits } from "@/lib/ai-ads/cost";
+import { sceneCredits, chatCredits, FAL, toCredits, planLimits, clampQuality, clampResolution } from "@/lib/ai-ads/cost";
 
 const BUCKET = "ad-studio";
 const RESOLUTIONS = ["480p", "720p", "1080p", "4k"];
@@ -18,6 +18,14 @@ export async function POST(req: Request) {
     const ctx = await requireRole("agent");
     const admin = supabaseAdmin();
     const pub = (p: string) => admin.storage.from(BUCKET).getPublicUrl(p).data.publicUrl;
+    // Free-tier gating: cap quality / resolution / count to the account's plan.
+    const { data: planRow } = await admin
+      .from("accounts")
+      .select("plan")
+      .eq("id", ctx.accountId)
+      .maybeSingle();
+    const plan = (planRow?.plan as string) ?? "free";
+    const limits = planLimits(plan);
 
     const form = await req.formData();
     const kindRaw = String(form.get("kind") || "image");
@@ -42,11 +50,12 @@ export async function POST(req: Request) {
       const engine = String(form.get("engine") || "seedance-fast");
       const duration = Math.min(Math.max(Math.round(Number(form.get("duration")) || 5), 3), 15);
       const format = String(form.get("format") || "9:16");
-      const resolution = RESOLUTIONS.includes(String(form.get("resolution")))
-        ? String(form.get("resolution"))
-        : "720p";
+      const resolution = clampResolution(
+        plan,
+        RESOLUTIONS.includes(String(form.get("resolution"))) ? String(form.get("resolution")) : "720p",
+      );
       const audio = String(form.get("audio") ?? "true") !== "false";
-      const count = Math.min(Math.max(Number(form.get("count")) || 1, 1), 4);
+      const count = Math.min(Math.max(Number(form.get("count")) || 1, 1), 4, limits.maxVariations);
       const cinematic = String(form.get("cinematic") ?? "true") !== "false";
       const mood = String(form.get("mood") ?? "auto").slice(0, 40);
       const cuts = String(form.get("cuts") ?? "false") === "true";
@@ -76,11 +85,13 @@ export async function POST(req: Request) {
       const description = String(form.get("description") ?? "").trim().slice(0, 600);
       if (!description) return NextResponse.json({ error: "Describe what to create" }, { status: 400 });
       const soulKind = String(form.get("soulKind") ?? "character").slice(0, 20);
-      const count = Math.min(Math.max(Number(form.get("count")) || 1, 1), 6);
+      const count = Math.min(Math.max(Number(form.get("count")) || 1, 1), 6, limits.maxVariations);
       const model = String(form.get("model")) === "gpt-image-2" ? "gpt-image-2" : "gpt-image-1.5";
-      const quality = (["low", "medium", "high"] as const).includes(String(form.get("quality")) as never)
-        ? (String(form.get("quality")) as "low" | "medium" | "high")
-        : "high";
+      const quality = limits.maxImageQuality === "standard"
+        ? "low"
+        : (["low", "medium", "high"] as const).includes(String(form.get("quality")) as never)
+          ? (String(form.get("quality")) as "low" | "medium" | "high")
+          : "high";
       const refIds = parseIds("soulIds");
       let refUrls: string[] = [];
       if (refIds.length) {
@@ -99,11 +110,14 @@ export async function POST(req: Request) {
       // image (Create)
       const prompt = String(form.get("text") ?? form.get("prompt") ?? "").trim();
       if (!prompt) return NextResponse.json({ error: "Type a message" }, { status: 400 });
-      const quality = (["standard", "hd", "best"] as const).includes(String(form.get("quality")) as never)
-        ? (String(form.get("quality")) as "standard" | "hd" | "best")
-        : "standard";
+      const quality = clampQuality(
+        plan,
+        (["standard", "hd", "best"] as const).includes(String(form.get("quality")) as never)
+          ? (String(form.get("quality")) as "standard" | "hd" | "best")
+          : "standard",
+      );
       const format = String(form.get("format") || "1:1");
-      const variations = Math.min(Math.max(Number(form.get("variations")) || 1, 1), 8);
+      const variations = Math.min(Math.max(Number(form.get("variations")) || 1, 1), 8, limits.maxVariations);
       const realism = String(form.get("realism") ?? "true") !== "false";
       const mood = String(form.get("mood") ?? "auto").slice(0, 40);
       const soulIds = parseIds("soulIds");
