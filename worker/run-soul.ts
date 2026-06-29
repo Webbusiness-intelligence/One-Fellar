@@ -71,15 +71,36 @@ export async function runSoulJob(job: Job): Promise<number> {
 
   await setProgress(job.id, "generating");
   const { prompt, format } = soulSheetPrompt(kind, description, refUrls.length > 0);
+  const gen = (m: GptModel) =>
+    refUrls.length
+      ? gptImageEdit({ prompt, imageUrls: refUrls, format, quality, num: count, model: m })
+      : gptImageGenerate({ prompt, format, quality, num: count, model: m });
+
+  // Reliability: retry transient fal failures (5xx / timeout / rate-limit / empty)
+  // with backoff, then fall back to gpt-image-1.5 if -2 keeps failing. If it still
+  // fails, surface the REAL error (e.g. a content-policy refusal) so it's actionable
+  // rather than a generic "couldn't generate".
+  const models: GptModel[] = model === "gpt-image-2" ? ["gpt-image-2", "gpt-image-1.5"] : ["gpt-image-1.5"];
   let outs: string[] = [];
-  try {
-    outs = refUrls.length
-      ? await gptImageEdit({ prompt, imageUrls: refUrls, format, quality, num: count, model })
-      : await gptImageGenerate({ prompt, format, quality, num: count, model });
-  } catch (e) {
-    console.error("[worker] soul gen failed:", String((e as Error)?.message ?? e));
+  let lastErr = "";
+  for (const m of models) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const r = await gen(m);
+        if (r.length) {
+          outs = r;
+          break;
+        }
+        lastErr = "the model returned no image";
+      } catch (e) {
+        lastErr = String((e as Error)?.message ?? e);
+        console.error(`[worker] soul gen ${m} attempt ${attempt + 1}:`, lastErr);
+      }
+      await new Promise((res) => setTimeout(res, 800 * (attempt + 1)));
+    }
+    if (outs.length) break;
   }
-  if (!outs.length) throw new Error("Couldn't generate that — try again");
+  if (!outs.length) throw new Error(lastErr || "Couldn't generate that — try again");
 
   let made = 0;
   for (let i = 0; i < outs.length; i++) {
