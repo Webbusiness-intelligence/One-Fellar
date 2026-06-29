@@ -231,6 +231,21 @@ html[data-theme="violet"] {
   --sidebar-ring: oklch(0.526 0.247 293);
 }
 
+html[data-theme="genalot"] {
+  /* Genalot brand — neon yellow #f5e31d with near-black text (Higgsfield-style:
+   * the accent reads as neon on dark surfaces; buttons are yellow with black text). */
+  --primary: #f5e31d;
+  --primary-foreground: #0c0c0a;
+  --primary-hover: #ffe92e;
+  --primary-soft: rgb(245 227 29 / 0.14);
+  --primary-soft-2: rgb(245 227 29 / 0.26);
+  --ring: #f5e31d;
+  --chart-1: #f5e31d;
+  --sidebar-primary: #f5e31d;
+  --sidebar-primary-foreground: #0c0c0a;
+  --sidebar-ring: #f5e31d;
+}
+
 html[data-theme="emerald"] {
   /* Brighter, fresher mint to match Supabase's button green. Buttons
    * pair this with a dark-green foreground (not near-black) so the

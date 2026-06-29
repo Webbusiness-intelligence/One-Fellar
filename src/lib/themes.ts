@@ -14,6 +14,7 @@
  */
 
 export const THEME_IDS = [
+  "genalot",
   "violet",
   "emerald",
   "cobalt",
@@ -23,7 +24,7 @@ export const THEME_IDS = [
 
 export type ThemeId = (typeof THEME_IDS)[number];
 
-export const DEFAULT_THEME: ThemeId = "emerald";
+export const DEFAULT_THEME: ThemeId = "genalot";
 
 export const STORAGE_KEY = "wacrm.theme";
 
@@ -43,7 +44,7 @@ export const MODES = ["light", "dark"] as const;
 
 export type Mode = (typeof MODES)[number];
 
-export const DEFAULT_MODE: Mode = "light";
+export const DEFAULT_MODE: Mode = "dark";
 
 export const MODE_STORAGE_KEY = "wacrm.mode";
 
@@ -68,9 +69,15 @@ export interface ThemeMeta {
 
 export const THEMES: ReadonlyArray<ThemeMeta> = [
   {
+    id: "genalot",
+    name: "Genalot",
+    tagline: "The brand — neon yellow, Higgsfield-bold.",
+    swatch: "#f5e31d",
+  },
+  {
     id: "violet",
     name: "Violet",
-    tagline: "The default — confident, slightly playful.",
+    tagline: "Confident, slightly playful.",
     swatch: "oklch(0.526 0.247 293)",
   },
   {
