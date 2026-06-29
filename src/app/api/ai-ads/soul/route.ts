@@ -15,7 +15,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { gptImageEdit, gptImageGenerate } from "@/lib/ai-ads/chat-models";
 
 const BUCKET = "ad-studio";
-const KINDS = ["character", "product", "location", "prop", "style"];
+const KINDS = ["character", "product", "location", "prop", "style", "logo"];
 
 function slugify(s: string): string {
   return (
@@ -53,6 +53,11 @@ function soulSheetPrompt(kind: string, desc: string, hasRef: boolean): { prompt:
       return {
         format: "1:1",
         prompt: `A STYLE / mood board that captures the visual language of ${desc} — colour palette, lighting, texture and composition cues arranged as a cohesive reference. Photoreal where relevant, premium art direction. NO text, NO labels, NO watermarks.${ref}`,
+      };
+    case "logo":
+      return {
+        format: "1:1",
+        prompt: `The logo / graphic of ${desc}, presented EXACTLY as a clean, flat 2D graphic — centered and isolated on a plain neutral white background, crisp and high-resolution, true to its shapes, colours and proportions. NOT a person, NOT a 3D object, NOT a scene, NOT a mockup, NO hands, NO props — just the graphic itself.${ref}`,
       };
     default:
       return {

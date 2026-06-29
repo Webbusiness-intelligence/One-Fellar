@@ -14,6 +14,7 @@ import {
   MapPin,
   Box,
   Palette,
+  Shapes,
   ChevronLeft,
   ChevronRight,
   X,
@@ -36,6 +37,7 @@ const KINDS = [
   { id: "location", label: "Location", icon: MapPin, desc: "a place or scene" },
   { id: "prop", label: "Prop", icon: Box, desc: "an object or graphic" },
   { id: "style", label: "Style", icon: Palette, desc: "a look or mood" },
+  { id: "logo", label: "Logo / Graphic", icon: Shapes, desc: "a logo or flat graphic" },
 ] as const;
 
 function slugify(s: string): string {

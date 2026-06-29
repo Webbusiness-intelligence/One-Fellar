@@ -291,6 +291,7 @@ export function Lightbox({
                       <option value="location">Location</option>
                       <option value="prop">Prop</option>
                       <option value="style">Style</option>
+                      <option value="logo">Logo / Graphic</option>
                     </select>
                     <button
                       type="button"
