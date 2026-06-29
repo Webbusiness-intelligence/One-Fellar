@@ -350,6 +350,15 @@ html[data-theme="rose"] {
     box-shadow:
       0 12px 40px rgb(0 0 0 / 0.35),
       inset 0 1px 0 rgb(255 255 255 / 0.08);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  /* Hover lift — yellow border + intensifying yellow glow (per the reference card). */
+  .glass:hover {
+    border-color: rgb(245 227 29 / 0.5);
+    box-shadow:
+      0 18px 50px rgb(0 0 0 / 0.45),
+      0 0 26px rgb(245 227 29 / 0.13),
+      inset 0 1px 0 rgb(255 255 255 / 0.1);
   }
 
   /* Site-wide glass — frost every translucent surface so the aurora reads through. */
