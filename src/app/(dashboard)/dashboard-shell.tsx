@@ -39,7 +39,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   return (
-    <div className="relative flex h-screen overflow-hidden bg-background">
+    <div className="relative flex h-screen overflow-hidden">
       {/* Desktop rail spacer — reserves the 64px the collapsed icon rail
           occupies so the absolutely-positioned sidebar can expand over
           content on hover without reflowing the page. */}

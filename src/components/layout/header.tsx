@@ -52,7 +52,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
 
   return (
     <header
-      className={`flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 lg:px-6 ${
+      className={`flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background/55 backdrop-blur-xl px-4 lg:px-6 ${
         isStudio ? "studio-dark" : ""
       }`}
     >
