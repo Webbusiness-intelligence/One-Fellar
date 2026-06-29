@@ -312,20 +312,15 @@ html[data-theme="rose"] {
   body {
     @apply text-foreground;
     background-color: var(--background);
-    /* Non-flat aurora + blueprint grid so the frosted glass catches colour and reads
-     * against varied light (a flat fill makes glassmorphism invisible). Brand yellow
-     * anchors it; violet + aqua give the cards something to refract. */
+    /* Non-flat aurora so the frosted glass catches colour and reads against varied
+     * light (a flat fill makes glassmorphism invisible). Brand yellow anchors it;
+     * violet + aqua give the cards something to refract. */
     background-image:
       radial-gradient(38% 40% at 14% 12%, rgb(245 227 29 / 0.22), transparent 70%),
       radial-gradient(42% 44% at 86% 14%, rgb(150 90 255 / 0.2), transparent 72%),
       radial-gradient(44% 42% at 80% 88%, rgb(40 200 230 / 0.16), transparent 72%),
-      radial-gradient(40% 42% at 8% 86%, rgb(245 227 29 / 0.12), transparent 70%),
-      linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px);
-    background-size:
-      100% 100%, 100% 100%, 100% 100%, 100% 100%, 48px 48px, 48px 48px;
-    background-repeat:
-      no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat;
+      radial-gradient(40% 42% at 8% 86%, rgb(245 227 29 / 0.12), transparent 70%);
+    background-repeat: no-repeat;
     background-attachment: fixed;
   }
   html {
