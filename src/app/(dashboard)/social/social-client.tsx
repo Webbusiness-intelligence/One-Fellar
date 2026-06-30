@@ -25,6 +25,8 @@ export function SocialClient() {
 
   const [caption, setCaption] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
+  const [assets, setAssets] = useState<{ id: string; url: string }[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const [when, setWhen] = useState("");
   const [busy, setBusy] = useState(false);
@@ -46,9 +48,15 @@ export function SocialClient() {
     const j = await r.json();
     if (r.ok) setPosts(j.posts ?? []);
   }
+  async function loadAssets() {
+    const r = await fetch("/api/social/assets");
+    const j = await r.json();
+    if (r.ok) setAssets(j.assets ?? []);
+  }
   useEffect(() => {
     loadAccounts();
     loadPosts();
+    loadAssets();
   }, []);
 
   const toggle = (p: string) =>
@@ -75,6 +83,7 @@ export function SocialClient() {
       setMsg({ kind: "ok", text: when ? "Scheduled ✓" : "Posted ✓" });
       setCaption("");
       setMediaUrl("");
+      setSelectedId(null);
       setWhen("");
       loadPosts();
     } catch (e) {
@@ -125,10 +134,38 @@ export function SocialClient() {
       <div className="mt-4 rounded-xl border border-border bg-card p-4">
         <div className="text-sm font-medium text-foreground">New post</div>
 
+        {assets.length > 0 && (
+          <div className="mt-3">
+            <div className="mb-1.5 text-xs text-muted-foreground">Pick a generation</div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {assets.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => {
+                    setMediaUrl(a.url);
+                    setSelectedId(a.id);
+                  }}
+                  className={cn(
+                    "h-16 w-16 shrink-0 overflow-hidden rounded-md border transition-colors",
+                    selectedId === a.id ? "border-primary ring-2 ring-primary/40" : "border-border hover:border-primary/40",
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.url} alt="" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <input
           value={mediaUrl}
-          onChange={(e) => setMediaUrl(e.target.value)}
-          placeholder="Image/video URL (paste a generated image's link)"
+          onChange={(e) => {
+            setMediaUrl(e.target.value);
+            setSelectedId(null);
+          }}
+          placeholder="…or paste an image / video URL"
           className="mt-3 h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary"
         />
         <textarea
