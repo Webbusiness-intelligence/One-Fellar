@@ -57,9 +57,9 @@ export async function POST(req: Request) {
       .select("plan")
       .eq("id", ctx.accountId)
       .maybeSingle();
-    const plan = (planRow?.plan as string) ?? "free";
-    quality = clampQuality(plan, quality);
-    variations = Math.min(variations, planLimits(plan).maxVariations);
+    const userPlan = (planRow?.plan as string) ?? "free";
+    quality = clampQuality(userPlan, quality);
+    variations = Math.min(variations, planLimits(userPlan).maxVariations);
     // GPT image is the engine everywhere now (kept silent in the UI); nano stays as
     // a reachable fallback only if explicitly requested.
     const engine = String(form.get("engine") ?? "gpt") === "nano" ? "nano" : "gpt";
@@ -429,7 +429,7 @@ export async function POST(req: Request) {
             chatId,
             assistantMsgId,
             summary: decision.prompt,
-            watermark: planLimits(plan).watermark,
+            watermark: planLimits(userPlan).watermark,
           },
           jtype: "image",
           fmt: "1:1",
