@@ -34,7 +34,8 @@ import { Lightbox, ActionIcon, type ViewerItem } from "./ad-result";
 import { MentionTextarea } from "./mention-textarea";
 import { GeneratingPanel } from "./generating";
 import { TEMPLATE_GROUPS } from "./templates";
-import { chatCredits } from "@/lib/ai-ads/cost";
+import { chatCredits, planLimits } from "@/lib/ai-ads/cost";
+import { useAuth } from "@/hooks/use-auth";
 
 export type ChatSummary = { id: string; title: string | null; updated_at: string };
 export type SoulRef = { id: string; handle: string; name: string; kind: string; url: string };
@@ -133,6 +134,8 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
   const [copyLoading, setCopyLoading] = useState(false);
   const [variations, setVariations] = useState(1);
   const [quality, setQuality] = useState<"standard" | "hd" | "best">("standard");
+  const { account } = useAuth();
+  const planFree = planLimits(account?.plan).maxImageQuality === "standard";
   const [showTemplates, setShowTemplates] = useState(false);
   const [showAttach, setShowAttach] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1153,8 +1156,8 @@ async function writeCopy(a: Asset) {
                 }`}
               >
                 <option value="standard">Standard</option>
-                <option value="hd">HD</option>
-                <option value="best">Best</option>
+                <option value="hd" disabled={planFree}>HD{planFree ? " · Pro" : ""}</option>
+                <option value="best" disabled={planFree}>Best{planFree ? " · Pro" : ""}</option>
               </select>
               <select
                 value={variations}
@@ -1165,8 +1168,8 @@ async function writeCopy(a: Asset) {
                 }`}
               >
                 <option value={1}>1 image</option>
-                <option value={4}>4 images</option>
-                <option value={8}>8 images</option>
+                <option value={4} disabled={planFree}>4 images{planFree ? " · Pro" : ""}</option>
+                <option value={8} disabled={planFree}>8 images{planFree ? " · Pro" : ""}</option>
                 <option value={12}>12 images</option>
               </select>
               <button

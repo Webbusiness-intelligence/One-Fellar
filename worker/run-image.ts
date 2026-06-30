@@ -9,6 +9,7 @@ import { gptImageEdit, gptImageGenerate } from "@/lib/ai-ads/chat-models";
 import { directImage } from "@/lib/ai-ads/image-director";
 import { gptImageUsd, FAL, toCredits } from "@/lib/ai-ads/cost";
 import { admin, BUCKET, insertAsset, resolveSouls, setProgress, type Job } from "./db";
+import sharp from "sharp";
 
 type GptModel = "gpt-image-1.5" | "gpt-image-2";
 
@@ -31,7 +32,26 @@ type Brief = {
   // chat linkage
   chatId?: string;
   assistantMsgId?: string;
+  watermark?: boolean;
 };
+
+// Composite a small "Genalot" wordmark bottom-right — applied to free-tier outputs.
+async function addWatermark(bytes: Uint8Array): Promise<Uint8Array> {
+  try {
+    const img = sharp(Buffer.from(bytes));
+    const m = await img.metadata();
+    const w = m.width ?? 1024;
+    const h = m.height ?? 1024;
+    const fs = Math.max(16, Math.round(w * 0.032));
+    const pad = Math.round(w * 0.022);
+    const svg = Buffer.from(
+      `<svg width="${w}" height="${h}"><text x="${w - pad}" y="${h - pad}" text-anchor="end" font-family="sans-serif" font-weight="700" font-size="${fs}" fill="#ffffff" fill-opacity="0.72" style="paint-order:stroke" stroke="#000000" stroke-opacity="0.28" stroke-width="${Math.max(1, Math.round(fs * 0.06))}">Genalot</text></svg>`,
+    );
+    return new Uint8Array(await img.composite([{ input: svg }]).png().toBuffer());
+  } catch {
+    return bytes; // never fail a generation over a watermark
+  }
+}
 
 export async function runImageJob(job: Job): Promise<number> {
   const b = (job.brief ?? {}) as Brief;

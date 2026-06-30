@@ -138,7 +138,7 @@ export async function POST(req: Request) {
         .insert({ account_id: ctx.accountId, chat_id: chatId, role: "user", text: prompt });
 
       fmt = "1:1";
-      brief = { prompt, quality, format, variations, realism, mood, soulIds, chatId };
+      brief = { prompt, quality, format, variations, realism, mood, soulIds, chatId, watermark: limits.watermark };
       est = chatCredits({ variations, quality, isEdit: false, engine: "gpt" });
     }
 

@@ -43,6 +43,8 @@ interface AccountSummary {
   /** Default deal currency (ISO-4217). NOT NULL DEFAULT 'USD' in the
    *  DB (migration 021); narrowed to DEFAULT_CURRENCY when absent. */
   default_currency: string;
+  /** Billing plan: free | starter | pro | studio (migration 035). */
+  plan: string;
 }
 
 interface AuthContextValue {
@@ -176,8 +178,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               id: accountRaw.id,
               name: accountRaw.name,
               default_currency: accountRaw.default_currency ?? DEFAULT_CURRENCY,
+              plan: "free",
             }
           : null;
+        // Plan is fetched in a SEPARATE, error-tolerant query so a pre-035 schema
+        // (no `plan` column) can never break auth — it just stays "free".
+        if (accountRow) {
+          const { data: planRow } = await supabase
+            .from("accounts")
+            .select("plan")
+            .eq("id", accountRow.id)
+            .maybeSingle();
+          if (planRow?.plan) accountRow.plan = planRow.plan as string;
+        }
 
         // Narrow the DB enum into our AccountRole union. The DB
         // constraint should make this unconditional, but a future

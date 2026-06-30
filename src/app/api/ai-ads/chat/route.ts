@@ -429,6 +429,7 @@ export async function POST(req: Request) {
             chatId,
             assistantMsgId,
             summary: decision.prompt,
+            watermark: planLimits(plan).watermark,
           },
           jtype: "image",
           fmt: "1:1",
