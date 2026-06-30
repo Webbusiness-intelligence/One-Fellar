@@ -312,14 +312,13 @@ html[data-theme="rose"] {
   body {
     @apply text-foreground;
     background-color: var(--background);
-    /* Non-flat aurora so the frosted glass catches colour and reads against varied
-     * light (a flat fill makes glassmorphism invisible). Brand yellow anchors it;
-     * violet + aqua give the cards something to refract. */
+    /* Site-wide photo backdrop + dark scrim — the frosted glass reads as glass over
+     * the image, and the scrim keeps text + cards legible. */
     background-image:
-      radial-gradient(38% 40% at 14% 12%, rgb(245 227 29 / 0.22), transparent 70%),
-      radial-gradient(42% 44% at 86% 14%, rgb(150 90 255 / 0.2), transparent 72%),
-      radial-gradient(44% 42% at 80% 88%, rgb(40 200 230 / 0.16), transparent 72%),
-      radial-gradient(40% 42% at 8% 86%, rgb(245 227 29 / 0.12), transparent 70%);
+      linear-gradient(rgb(16 18 20 / 0.62), rgb(16 18 20 / 0.62)),
+      url("/settings-bg.jpg");
+    background-size: cover;
+    background-position: center;
     background-repeat: no-repeat;
     background-attachment: fixed;
   }

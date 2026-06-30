@@ -51,24 +51,20 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="relative -m-4 min-h-[calc(100vh-3.5rem)] overflow-hidden bg-[url('/settings-bg.jpg')] bg-cover bg-center bg-fixed p-4 sm:-m-6 sm:p-6">
-      {/* Scrim over the photo so the glass cards + text stay readable. */}
-      <div className="pointer-events-none absolute inset-0 bg-background/60" aria-hidden />
-      <div className="relative z-10">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Settings
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Everything in one place — your account and your workspace. Pick a
-            section to manage it.
-          </p>
-        </div>
+    <div>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Settings
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Everything in one place — your account and your workspace. Pick a
+          section to manage it.
+        </p>
+      </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[236px_minmax(0,1fr)] lg:items-start">
-          <SettingsRail active={section} onSelect={go} hints={hints} />
-          <div className="min-w-0">{panel[section]}</div>
-        </div>
+      <div className="mt-6 grid gap-6 lg:grid-cols-[236px_minmax(0,1fr)] lg:items-start">
+        <SettingsRail active={section} onSelect={go} hints={hints} />
+        <div className="min-w-0">{panel[section]}</div>
       </div>
     </div>
   );
