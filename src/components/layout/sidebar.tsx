@@ -9,6 +9,7 @@ import {
   CreditCard,
   Crown,
   LogOut,
+  Send,
   Settings,
   Shield,
   Sparkles,
@@ -82,6 +83,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: "/ad-studio", label: "Ad Studio", icon: Sparkles },
+  { href: "/social", label: "Social", icon: Send },
   { href: "/pricing", label: "Pricing", icon: CreditCard },
 ];
 
