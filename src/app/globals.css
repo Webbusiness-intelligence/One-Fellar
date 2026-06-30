@@ -315,7 +315,7 @@ html[data-theme="rose"] {
     /* Site-wide photo backdrop + dark scrim — the frosted glass reads as glass over
      * the image, and the scrim keeps text + cards legible. */
     background-image:
-      linear-gradient(rgb(16 18 20 / 0.62), rgb(16 18 20 / 0.62)),
+      linear-gradient(rgb(16 18 20 / 0.85), rgb(16 18 20 / 0.85)),
       url("/settings-bg.jpg");
     background-size: cover;
     background-position: center;

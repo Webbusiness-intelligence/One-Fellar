@@ -6,7 +6,7 @@
 export default function AdStudioLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="studio-dark relative -m-4 min-h-[calc(100vh-72px)] bg-[#101214] p-4 text-foreground sm:-m-6 sm:p-6"
+      className="studio-dark relative -m-4 min-h-[calc(100vh-72px)] p-4 text-foreground sm:-m-6 sm:p-6"
     >
       {children}
     </div>
