@@ -86,10 +86,10 @@ export function ScheduleDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[86vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
-          <div className="text-sm font-semibold text-foreground">Share to social</div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+      <div className="glass-panel animate-fade-in-up relative z-10 flex max-h-[86vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/[0.08] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
+          <div className="text-lg font-semibold text-foreground">Share to social</div>
+          <button onClick={onClose} className="flex size-8 items-center justify-center rounded-lg bg-white/[0.04] text-white/40 transition-colors hover:text-white/70">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -102,14 +102,14 @@ export function ScheduleDialog({
               <img src={mediaUrl} alt="" className="max-h-64 w-full object-cover" />
               <button
                 onClick={() => setPicker(true)}
-                className="absolute bottom-2 right-2 rounded-md border border-border bg-background/85 px-2.5 py-1 text-xs backdrop-blur-sm hover:bg-background"
+                className="absolute bottom-2 right-2 rounded-lg border border-white/10 bg-black/50 px-2.5 py-1 text-xs text-white/80 backdrop-blur-sm transition-colors hover:bg-black/70"
               >
                 Change
               </button>
             </div>
           ) : (
             <div>
-              <div className="mb-2 text-xs font-medium text-muted-foreground">Choose from your creations</div>
+              <div className="mb-2 text-[12px] font-medium text-white/50">Choose from your creations</div>
               {assets.length ? (
                 <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
                   {assets.map((a) => (
@@ -119,7 +119,7 @@ export function ScheduleDialog({
                         setMediaUrl(a.url);
                         setPicker(false);
                       }}
-                      className="group relative aspect-square overflow-hidden rounded-lg border border-border transition-colors hover:border-primary"
+                      className="group relative aspect-square overflow-hidden rounded-xl border border-white/[0.06] transition-all hover:border-primary/50"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={a.url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
@@ -127,13 +127,13 @@ export function ScheduleDialog({
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">No generations yet — create one in Ad Studio.</p>
+                <p className="text-xs text-white/40">No generations yet — create one in Ad Studio.</p>
               )}
               <input
                 value={mediaUrl}
                 onChange={(e) => setMediaUrl(e.target.value)}
                 placeholder="…or paste an image / video URL"
-                className="mt-3 h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary"
+                className="mt-3 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm text-white outline-none transition-all placeholder:text-white/20 focus:border-primary/30"
               />
               {mediaUrl && (
                 <button onClick={() => setPicker(false)} className="mt-2 text-xs font-medium text-primary">
@@ -149,12 +149,12 @@ export function ScheduleDialog({
             onChange={(e) => setCaption(e.target.value)}
             rows={3}
             placeholder="Write a caption…"
-            className="mt-4 w-full resize-none rounded-md border border-input bg-background p-3 text-sm outline-none focus:border-primary"
+            className="mt-4 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-sm text-white outline-none transition-all placeholder:text-white/20 focus:border-primary/30 focus:shadow-[0_0_20px_rgb(245_227_29_/_0.06)]"
           />
 
           {/* Platforms */}
           <div className="mt-3">
-            <div className="mb-1.5 text-xs font-medium text-muted-foreground">Post to</div>
+            <div className="mb-2 text-[12px] font-medium text-white/50">Post to</div>
             {accounts.length ? (
               <div className="flex flex-wrap gap-2">
                 {accounts.map((p) => (
@@ -162,10 +162,10 @@ export function ScheduleDialog({
                     key={p}
                     onClick={() => toggle(p)}
                     className={cn(
-                      "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                      "flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-medium transition-all",
                       platforms.includes(p)
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:text-foreground",
+                        ? "border-primary/30 bg-primary/10 text-primary"
+                        : "border-white/[0.06] bg-white/[0.03] text-white/40 hover:border-white/10 hover:text-white/60",
                     )}
                   >
                     {platforms.includes(p) && <Check className="h-3 w-3" />}
@@ -174,7 +174,7 @@ export function ScheduleDialog({
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">No accounts linked — connect them in the Ayrshare dashboard.</p>
+              <p className="text-xs text-white/40">No accounts linked — connect them in the Ayrshare dashboard.</p>
             )}
           </div>
 
@@ -189,7 +189,7 @@ export function ScheduleDialog({
                 type="datetime-local"
                 value={when}
                 onChange={(e) => setWhen(e.target.value)}
-                className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-primary"
+                className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-xs text-white/70 outline-none focus:border-primary/30"
               />
             )}
           </div>
@@ -197,14 +197,14 @@ export function ScheduleDialog({
           {err && <p className="mt-3 text-xs text-destructive">{err}</p>}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3.5">
-          <button onClick={onClose} className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+        <div className="flex items-center justify-end gap-2 border-t border-white/[0.06] px-5 py-4">
+          <button onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-medium text-white/50 transition-colors hover:text-white/70">
             Cancel
           </button>
           <button
             onClick={submit}
             disabled={busy}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            className="ad-cta inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             {scheduleOn ? "Schedule" : "Post now"}

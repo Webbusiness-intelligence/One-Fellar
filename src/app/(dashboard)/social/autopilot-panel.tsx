@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, Play, Plus, Power, Sparkles, Trash2, Upload, X, Zap } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { PillSelect } from "../ad-studio/pill-select";
 
 interface Rule {
   id: string;
@@ -166,38 +167,38 @@ export function AutopilotPanel() {
   }
 
   return (
-    <div className="mt-5 rounded-2xl border border-border bg-card p-4">
+    <div className="glass-panel mt-6 rounded-2xl border border-white/[0.07] p-5">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-base font-semibold text-foreground">
+        <div className="flex items-center gap-2 text-[16px] font-semibold text-foreground">
           <Zap className="h-4 w-4 text-primary" /> Autopilot
         </div>
-        <button onClick={() => setOpen((o) => !o)} className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-foreground hover:border-primary/40">
+        <button onClick={() => setOpen((o) => !o)} className="inline-flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[12px] font-medium text-white/55 transition-all hover:border-white/10 hover:bg-white/[0.06] hover:text-white/80">
           <Plus className="h-3.5 w-3.5" /> New
         </button>
       </div>
-      <p className="mt-1 mb-3 text-xs text-muted-foreground">
+      <p className="mb-4 mt-1 text-[12px] text-white/40">
         Lock in your brand — reference images, Soul IDs and mood — and it auto-generates on-brand posts on a schedule.
       </p>
 
       {open && (
-        <div className="mb-4 space-y-3 rounded-xl border border-border bg-background p-3">
+        <div className="mb-4 space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name"
-            className="h-8 w-full rounded-md border border-input bg-background px-2.5 text-sm outline-none focus:border-primary" />
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-white outline-none transition-all placeholder:text-white/20 focus:border-primary/30 focus:shadow-[0_0_20px_rgb(245_227_29_/_0.06)]" />
 
           {/* Prompt with @-mention */}
           <div className="relative">
             <textarea value={prompt} onChange={onPrompt} rows={2}
               placeholder="What to make each time — type @ to feature a Soul ID (character, product, logo…)"
-              className="w-full resize-none rounded-md border border-input bg-background p-2.5 text-sm outline-none focus:border-primary" />
+              className="w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-sm text-white outline-none transition-all placeholder:text-white/20 focus:border-primary/30 focus:shadow-[0_0_20px_rgb(245_227_29_/_0.06)]" />
             {matches.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-border bg-background shadow-xl">
+              <div className="dropdown-solid animate-fade-in-up absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-xl">
                 {matches.map((s) => (
                   <button key={s.id} onClick={() => pickMention(s)}
-                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-muted">
+                    className="flex w-full items-center gap-2 px-2.5 py-2 text-left text-xs transition-colors hover:bg-white/[0.04]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={s.url} alt="" className="h-6 w-6 rounded object-cover" />
-                    <span className="font-medium text-foreground">@{s.handle}</span>
-                    <span className="text-muted-foreground">{s.name} · {s.kind}</span>
+                    <span className="font-medium text-white/80">@{s.handle}</span>
+                    <span className="text-white/40">{s.name} · {s.kind}</span>
                   </button>
                 ))}
               </div>
@@ -260,44 +261,38 @@ export function AutopilotPanel() {
           <div className="flex flex-wrap gap-1.5">
             {accounts.length ? accounts.map((p) => (
               <button key={p} onClick={() => flip(setPlatforms, p)}
-                className={cn("rounded-full border px-2.5 py-1 text-xs",
-                  platforms.includes(p) ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground")}>
+                className={cn("rounded-xl border px-3 py-2 text-[12px] font-medium transition-all",
+                  platforms.includes(p)
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-white/[0.06] bg-white/[0.03] text-white/40 hover:border-white/10 hover:text-white/60")}>
                 {title(p)}
               </button>
-            )) : <span className="text-xs text-muted-foreground">Connect accounts first.</span>}
+            )) : <span className="text-xs text-white/40">Connect accounts first.</span>}
           </div>
 
-          {/* Mood + format + cadence + start */}
+          {/* Mood + format + model + cadence + start */}
           <div className="flex flex-wrap items-center gap-2">
-            <select value={mood} onChange={(e) => setMood(e.target.value)}
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-primary">
-              {MOODS.map((m) => <option key={m} value={m}>{m === "auto" ? "Mood: auto" : title(m)}</option>)}
-            </select>
-            <select value={format} onChange={(e) => setFormat(e.target.value)}
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-primary">
-              {FORMATS.map((f) => <option key={f.v} value={f.v}>{f.label}</option>)}
-            </select>
-            <select value={model} onChange={(e) => setModel(e.target.value)}
+            <PillSelect value={mood} onChange={setMood} active={mood !== "auto"}
+              options={MOODS.map((m) => ({ v: m, label: m === "auto" ? "Mood: auto" : title(m) }))} />
+            <PillSelect value={format} onChange={setFormat} active={format !== "1:1"}
+              options={FORMATS.map((f) => ({ v: f.v, label: f.label }))} />
+            <PillSelect value={model} onChange={setModel} active={model !== "auto"}
               title="Image model — prompt-only models ignore references/Souls (auto-bumped to GPT Image 2 when refs are attached)"
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-primary">
-              {MODELS.map((m) => <option key={m.v} value={m.v}>{m.label}</option>)}
-            </select>
-            <select value={hours} onChange={(e) => setHours(Number(e.target.value))}
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-primary">
-              {FREQ.map((f) => <option key={f.hours} value={f.hours}>{f.label}</option>)}
-            </select>
-            <label className="text-xs text-muted-foreground">
+              options={MODELS} />
+            <PillSelect value={String(hours)} onChange={(v) => setHours(Number(v))} active={hours !== 168}
+              options={FREQ.map((f) => ({ v: String(f.hours), label: f.label }))} />
+            <label className="flex items-center gap-1.5 text-[12px] text-white/40">
               Start
               <input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)}
-                className="ml-1 rounded-md border border-input bg-background px-1.5 py-1 text-xs text-foreground outline-none focus:border-primary" />
+                className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 outline-none focus:border-primary/30" />
             </label>
           </div>
 
           {err && <p className="text-xs text-destructive">{err}</p>}
           <div className="flex justify-end gap-2">
-            <button onClick={() => setOpen(false)} className="px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+            <button onClick={() => setOpen(false)} className="px-3 py-2 text-[12px] text-white/40 transition-colors hover:text-white/70">Cancel</button>
             <button onClick={create} disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50">
+              className="ad-cta inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-[12px] font-semibold disabled:opacity-50">
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />} Create
             </button>
           </div>
@@ -307,15 +302,15 @@ export function AutopilotPanel() {
       {rules.length ? (
         <ul className="space-y-2">
           {rules.map((r) => (
-            <li key={r.id} className="flex items-center gap-2 rounded-lg border border-border bg-background p-3">
+            <li key={r.id} className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 transition-colors hover:border-primary/15">
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-foreground">{r.name}</div>
-                <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                <div className="mt-0.5 truncate text-[11px] text-white/40">
                   {cadence(r.interval_hours)} · {r.platforms.map(title).join(", ")} · next {new Date(r.next_run_at).toLocaleString()}
                 </div>
               </div>
               <button onClick={() => runNow(r.id)} disabled={running === r.id} title="Run now"
-                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-foreground hover:border-primary/40 disabled:opacity-50">
+                className="inline-flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1.5 text-[11px] font-medium text-white/70 transition-all hover:border-white/10 hover:text-white/90 disabled:opacity-50">
                 {running === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
                 {running === r.id ? "Queued" : "Run now"}
               </button>
