@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Play, Plus, Power, Sparkles, Trash2, Upload, X, Zap } from "lucide-react";
+import { ArrowLeft, Loader2, Play, Plus, Power, Sparkles, Trash2, Upload, X, Zap } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { PillSelect } from "../ad-studio/pill-select";
@@ -167,21 +167,32 @@ export function AutopilotPanel() {
   }
 
   return (
-    <div className="glass-panel mt-6 rounded-2xl border border-white/[0.07] p-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-[16px] font-semibold text-foreground">
-          <Zap className="h-4 w-4 text-primary" /> Autopilot
+    <div className="mx-auto max-w-[1100px]">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-3xl font-semibold text-foreground">Autopilot</h1>
+          <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-white/40">
+            Lock in your brand — reference images, Soul IDs and mood — and it auto-generates on-brand posts on a schedule, hands-off.
+          </p>
         </div>
-        <button onClick={() => setOpen((o) => !o)} className="inline-flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[12px] font-medium text-white/55 transition-all hover:border-white/10 hover:bg-white/[0.06] hover:text-white/80">
-          <Plus className="h-3.5 w-3.5" /> New
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href="/social"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-[13px] font-medium text-white/60 transition-all hover:border-white/10 hover:text-white/80"
+          >
+            <ArrowLeft className="h-4 w-4" /> Planner
+          </a>
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className="ad-cta inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-[13px] font-semibold"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} /> New autopilot
+          </button>
+        </div>
       </div>
-      <p className="mb-4 mt-1 text-[12px] text-white/40">
-        Lock in your brand — reference images, Soul IDs and mood — and it auto-generates on-brand posts on a schedule.
-      </p>
 
       {open && (
-        <div className="mb-4 space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="glass-panel mb-6 space-y-4 rounded-2xl border border-white/[0.07] p-6">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name"
             className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-white outline-none transition-all placeholder:text-white/20 focus:border-primary/30 focus:shadow-[0_0_20px_rgb(245_227_29_/_0.06)]" />
 
@@ -325,7 +336,13 @@ export function AutopilotPanel() {
           ))}
         </ul>
       ) : (
-        <p className="text-xs text-muted-foreground">No autopilots yet.</p>
+        <div className="glass-panel flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/[0.08] p-12 text-center">
+          <div className="mb-4 flex size-14 items-center justify-center rounded-2xl border border-primary/10 bg-primary/5">
+            <Zap className="size-6 text-primary/40" strokeWidth={1} />
+          </div>
+          <p className="mb-1 text-[14px] text-white/30">No autopilots yet</p>
+          <p className="text-[12px] text-white/20">Create one to auto-generate and post on a schedule.</p>
+        </div>
       )}
     </div>
   );

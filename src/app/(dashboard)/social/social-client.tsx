@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Clock, Calendar, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, Plus, Clock, Calendar, ArrowRight, Zap } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { ScheduleDialog } from "./schedule-dialog";
-import { AutopilotPanel } from "./autopilot-panel";
 
 interface Post {
   id: string;
@@ -214,12 +214,20 @@ export function SocialClient() {
           <h1 className="font-heading text-3xl font-semibold text-foreground">Social planner</h1>
           <p className="mt-1 text-[13px] text-white/40">Schedule your creations across your connected accounts.</p>
         </div>
-        <button
-          onClick={() => setDialog(true)}
-          className="ad-cta inline-flex shrink-0 items-center gap-2 rounded-xl px-5 py-2.5 text-[13px] font-semibold"
-        >
-          <Plus className="h-4 w-4" strokeWidth={2.5} /> New post
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/social/autopilot"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-[13px] font-medium text-white/70 transition-all hover:border-primary/30 hover:text-primary"
+          >
+            <Zap className="h-4 w-4" /> Autopilot
+          </Link>
+          <button
+            onClick={() => setDialog(true)}
+            className="ad-cta inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-[13px] font-semibold"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} /> New post
+          </button>
+        </div>
       </div>
 
       {accounts && accounts.length === 0 && (
@@ -421,8 +429,6 @@ export function SocialClient() {
           </div>
         </div>
       </div>
-
-      <AutopilotPanel />
 
       <ScheduleDialog open={dialog} onClose={() => setDialog(false)} onDone={load} />
     </div>
