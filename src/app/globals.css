@@ -9,7 +9,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-playfair);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -447,4 +447,115 @@ html[data-theme="rose"] {
     transform: none;
     filter: blur(0);
   }
+}
+
+/* ============================================================
+ * KIMI DESIGN LAYER — the "Genalot" redesign visual language.
+ * A near-black canvas with an ambient particle background, glass
+ * surfaces, a yellow primary (already the genalot accent) + a lime
+ * highlight, Playfair display headings, and lots of soft motion.
+ * `.genalot-canvas` scopes the darker base + lime token to the app
+ * shell so auth / marketing pages are untouched by this pass.
+ * ============================================================ */
+.genalot-canvas {
+  color-scheme: dark;
+  --background: #050508;
+  --brand-lime: 72 100% 50%; /* c8ff00 — glow / accent highlight */
+}
+.genalot-canvas select option,
+.genalot-canvas select optgroup {
+  background-color: #101015;
+  color: #f5f5f5;
+}
+
+/* ---- Glass surfaces ---- */
+.glass-strong {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.glass-panel {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+/* Opaque dark dropdown — for menus that must not be see-through. */
+.dropdown-solid {
+  background: #141418;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* ---- Glows ---- */
+.glow-accent {
+  box-shadow: 0 0 40px rgba(200, 255, 0, 0.1), 0 0 80px rgba(200, 255, 0, 0.05);
+}
+.glow-card {
+  box-shadow: 0 0 30px rgba(200, 255, 0, 0.06);
+}
+
+/* ---- Animated gradient border ---- */
+@keyframes kimi-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.shimmer-border {
+  position: relative;
+}
+.shimmer-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, rgba(200, 255, 0, 0.15), transparent);
+  background-size: 200% 100%;
+  animation: kimi-shimmer 4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ---- Fade-in-up entrance (with stagger) ---- */
+@keyframes kimi-fade-in-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: kimi-fade-in-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.animate-fade-in-up-delay-1 { animation: kimi-fade-in-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards; opacity: 0; }
+.animate-fade-in-up-delay-2 { animation: kimi-fade-in-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards; opacity: 0; }
+.animate-fade-in-up-delay-3 { animation: kimi-fade-in-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards; opacity: 0; }
+
+/* ---- Floating particles ---- */
+@keyframes kimi-float {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  25% { transform: translateY(-20px) translateX(10px); }
+  50% { transform: translateY(-10px) translateX(-10px); }
+  75% { transform: translateY(-30px) translateX(5px); }
+}
+.float-particle { animation: kimi-float 8s ease-in-out infinite; }
+.float-particle-delay { animation: kimi-float 10s ease-in-out infinite 2s; }
+.float-particle-delay-2 { animation: kimi-float 12s ease-in-out infinite 4s; }
+
+/* ---- Pulse glow ---- */
+@keyframes kimi-pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+.pulse-glow { animation: kimi-pulse-glow 4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-border::before,
+  .animate-fade-in-up,
+  .animate-fade-in-up-delay-1,
+  .animate-fade-in-up-delay-2,
+  .animate-fade-in-up-delay-3,
+  .float-particle,
+  .float-particle-delay,
+  .float-particle-delay-2,
+  .pulse-glow { animation: none; }
 }

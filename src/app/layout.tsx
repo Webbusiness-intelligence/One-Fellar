@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Playfair_Display, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/hooks/use-theme";
@@ -13,9 +13,17 @@ import {
   THEME_IDS,
 } from "@/lib/themes";
 
-const geistSans = Geist({
+const interSans = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
+});
+
+// Playfair Display drives the Kimi look's display headings (--font-heading).
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  style: ["normal", "italic"],
 });
 
 const geistMono = Geist_Mono({
@@ -91,7 +99,7 @@ export default function RootLayout({
       lang="en"
       data-theme={DEFAULT_THEME}
       data-mode={DEFAULT_MODE}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${interSans.variable} ${playfair.variable} ${geistMono.variable} h-full antialiased`}
       // The `theme-boot` script below rewrites `data-theme` and
       // `data-mode` on <html> from localStorage before React hydrates,
       // so for any non-default choice the client DOM intentionally

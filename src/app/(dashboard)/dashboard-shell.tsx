@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
+import { AmbientBackground } from "@/components/layout/ambient-background";
+import { TopNav } from "@/components/layout/top-nav";
 
 // Auth-gated dashboard shell. Extracted from the layout so the layout
 // itself can stay a server component and export metadata (noindex) —
@@ -14,11 +14,6 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // Sidebar drawer state — only used on mobile. On lg+ the sidebar is
-  // always visible and this stays at `false` (ignored by the component).
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
-
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
@@ -27,7 +22,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
+      <div className="genalot-canvas flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <p className="text-sm text-muted-foreground">Loading...</p>
@@ -38,18 +33,18 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
 
   if (!user) return null;
 
+  // Genalot UI shell: a near-black canvas with the ambient background, an in-flow top
+  // navbar, then the main region. Main keeps the old bounded, internally-scrolling
+  // model (viewport height) + the same p-4/p-6 padding, so existing pages that rely
+  // on it (Ad Studio's edge-bleed) still lay out correctly. The navbar frosts on this
+  // container's scroll (id="app-scroll").
   return (
-    <div className="relative flex h-screen overflow-hidden">
-      {/* Desktop rail spacer — reserves the 64px the collapsed icon rail
-          occupies so the absolutely-positioned sidebar can expand over
-          content on hover without reflowing the page. */}
-      <div className="hidden shrink-0 lg:block lg:w-16" aria-hidden />
-      <Sidebar open={sidebarOpen} onClose={closeSidebar} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header onOpenSidebar={() => setSidebarOpen(true)} />
-        {/* Thinner horizontal padding on mobile so cards have room to breathe. */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
-      </div>
+    <div className="genalot-canvas relative flex h-screen flex-col overflow-hidden bg-background text-foreground">
+      <AmbientBackground />
+      <TopNav />
+      <main id="app-scroll" className="relative z-10 flex-1 overflow-y-auto p-4 sm:p-6">
+        {children}
+      </main>
     </div>
   );
 }
