@@ -28,6 +28,7 @@ import {
   Image as ImageIcon,
   PanelLeft,
   Camera,
+  ChevronDown,
 } from "lucide-react";
 
 import { Lightbox, ActionIcon, type ViewerItem } from "./ad-result";
@@ -126,6 +127,70 @@ const MODELS = [
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : "Something went wrong");
 
+// A pill dropdown that opens UPWARD with its own scroll — native <select> popups are
+// unreliable inside the glass (backdrop-blur) composer, so we render our own list.
+type PillOption = { v: string; label: string; disabled?: boolean };
+function PillSelect({
+  value,
+  options,
+  onChange,
+  title,
+  active,
+}: {
+  value: string;
+  options: PillOption[];
+  onChange: (v: string) => void;
+  title?: string;
+  active?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+  const cur = options.find((o) => o.v === value);
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        title={title}
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-1 rounded-lg border bg-white/5 py-1.5 pl-2.5 pr-1.5 text-[12px] transition-colors hover:border-white/25 ${
+          active ? "border-primary/40 text-primary" : "border-white/10 text-foreground/80"
+        }`}
+      >
+        {cur?.label ?? value}
+        <ChevronDown className="size-3 opacity-70" />
+      </button>
+      {open ? (
+        <div className="absolute bottom-full left-0 z-30 mb-2 max-h-64 w-max min-w-full overflow-y-auto rounded-xl border border-border bg-popover p-1 shadow-xl">
+          {options.map((o) => (
+            <button
+              key={o.v}
+              type="button"
+              disabled={o.disabled}
+              onClick={() => {
+                onChange(o.v);
+                setOpen(false);
+              }}
+              className={`flex w-full items-center whitespace-nowrap rounded-lg px-2.5 py-1.5 text-left text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                o.v === value ? "bg-primary/10 text-primary" : "text-foreground/90 hover:bg-muted"
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
   const [chats, setChats] = useState<ChatSummary[]>(initialChats);
   const [activeChatId, setActiveChatId] = useState<string | null>(initialChats[0]?.id ?? null);
@@ -146,7 +211,6 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
   const [copyVariants, setCopyVariants] = useState<Copy[]>([]);
   const [copyLoading, setCopyLoading] = useState(false);
   const [variations, setVariations] = useState(1);
-  const [quality, setQuality] = useState<"standard" | "hd" | "best">("standard");
   const { account } = useAuth();
   const planFree = planLimits(account?.plan).maxImageQuality === "standard";
   const [showTemplates, setShowTemplates] = useState(false);
@@ -165,6 +229,14 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
   const [realism, setRealism] = useState(true);
   const [mood, setMood] = useState("auto");
   const [model, setModel] = useState("auto");
+  // The model is the single quality/price lever now (the old Standard/HD/Best pill is
+  // gone): GPT Image 2 = Best, GPT Image 1.5 / Auto = HD, other models price flat.
+  const quality: "standard" | "hd" | "best" =
+    model === "gpt-image-2"
+      ? "best"
+      : model === "gpt-image-1.5" || model === "auto"
+        ? "hd"
+        : "best";
   const [skillId, setSkillId] = useState<string | null>(null);
   const [enhanced, setEnhanced] = useState<string | null>(null);
   useEffect(() => setEnhanced(null), [input]); // editing the prompt clears a stale enhanced version
@@ -1168,31 +1240,18 @@ async function writeCopy(a: Asset) {
                   </option>
                 ))}
               </select>
-              <select
-                value={quality}
-                onChange={(e) => setQuality(e.target.value as "standard" | "hd" | "best")}
-                title="Quality — Standard · HD · Best (higher is sharper and costs more)"
-                className={`cursor-pointer appearance-none rounded-lg border bg-white/5 py-1.5 pl-2.5 pr-2 text-[12px] outline-none transition-colors hover:border-white/25 ${
-                  quality !== "standard" ? "border-primary/40 text-primary" : "border-white/10 text-foreground/80"
-                }`}
-              >
-                <option value="standard">Standard</option>
-                <option value="hd" disabled={planFree}>HD{planFree ? " · Pro" : ""}</option>
-                <option value="best" disabled={planFree}>Best{planFree ? " · Pro" : ""}</option>
-              </select>
-              <select
-                value={variations}
-                onChange={(e) => setVariations(Number(e.target.value))}
+              <PillSelect
+                value={String(variations)}
+                onChange={(v) => setVariations(Number(v))}
                 title="How many variations to generate"
-                className={`cursor-pointer appearance-none rounded-lg border bg-white/5 py-1.5 pl-2.5 pr-2 text-[12px] outline-none transition-colors hover:border-white/25 ${
-                  variations > 1 ? "border-primary/40 text-primary" : "border-white/10 text-foreground/80"
-                }`}
-              >
-                <option value={1}>1 image</option>
-                <option value={4} disabled={planFree}>4 images{planFree ? " · Pro" : ""}</option>
-                <option value={8} disabled={planFree}>8 images{planFree ? " · Pro" : ""}</option>
-                <option value={12}>12 images</option>
-              </select>
+                active={variations > 1}
+                options={[
+                  { v: "1", label: "1 image" },
+                  { v: "4", label: planFree ? "4 images · Pro" : "4 images", disabled: planFree },
+                  { v: "8", label: planFree ? "8 images · Pro" : "8 images", disabled: planFree },
+                  { v: "12", label: "12 images" },
+                ]}
+              />
               <button
                 type="button"
                 onClick={() => setShowDirector((v) => !v)}
@@ -1241,18 +1300,13 @@ async function writeCopy(a: Asset) {
                   <option value="moody">Moody</option>
                 </select>
               ) : null}
-              <select
+              <PillSelect
                 value={model}
-                onChange={(e) => setModel(e.target.value)}
-                title="Model — Auto picks GPT Image 2 for Souls/Best, else 1.5. Prompt-only models ignore references."
-                className="cursor-pointer appearance-none rounded-lg border border-white/10 bg-white/5 py-1.5 pl-2.5 pr-2 text-[12px] text-foreground/80 outline-none transition-colors hover:border-white/25"
-              >
-                {MODELS.map((m) => (
-                  <option key={m.v} value={m.v}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
+                onChange={setModel}
+                title="Model — Auto picks GPT Image 2 for Souls, else 1.5. Prompt-only models ignore references."
+                active={model !== "auto"}
+                options={MODELS}
+              />
               <SkillPicker value={skillId} onChange={setSkillId} kind="image" />
               <PromptEnhancer
                 getParams={() => ({
