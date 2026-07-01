@@ -145,14 +145,14 @@ export function GalleryClient({ initialItems }: { initialItems: Item[] }) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl pb-16">
-      <div className="flex items-center justify-between gap-4">
+    <div className="mx-auto max-w-[1100px] pb-16">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
-            <Sparkles className="size-5 text-primary" strokeWidth={1.75} />
+          <h1 className="flex items-center gap-2 font-heading text-3xl font-semibold text-foreground">
+            <Sparkles className="size-6 text-primary" strokeWidth={1.75} />
             Gallery
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Every ad you’ve generated.</p>
+          <p className="mt-1 text-[13px] text-white/40">Every ad you’ve generated.</p>
         </div>
         <div className="flex items-center gap-2">
           {shown.length > 0 ? (
@@ -160,7 +160,7 @@ export function GalleryClient({ initialItems }: { initialItems: Item[] }) {
               type="button"
               onClick={downloadAll}
               disabled={downloadingAll}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-[13px] font-medium text-white/60 transition-all hover:border-white/10 hover:text-white/80 disabled:opacity-60"
             >
               {downloadingAll ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -172,7 +172,7 @@ export function GalleryClient({ initialItems }: { initialItems: Item[] }) {
           ) : null}
           <Link
             href="/ad-studio"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:bg-muted"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-[13px] font-medium text-white/60 transition-all hover:border-white/10 hover:text-white/80"
           >
             <ArrowLeft className="size-4" strokeWidth={1.75} />
             Back to studio
@@ -180,14 +180,14 @@ export function GalleryClient({ initialItems }: { initialItems: Item[] }) {
         </div>
       </div>
 
-      <div className="mt-5 flex items-center gap-1.5">
+      <div className="mt-6 flex items-center gap-2">
         <button
           type="button"
           onClick={() => setFilter("all")}
-          className={`rounded-md border px-3 py-1 text-[13px] transition-colors ${
+          className={`rounded-xl border px-3 py-2 text-[12px] font-medium transition-all ${
             filter === "all"
-              ? "border-primary bg-primary/10 text-primary"
-              : "border-border text-muted-foreground hover:text-foreground"
+              ? "border-primary/30 bg-primary/10 text-primary"
+              : "border-white/[0.06] bg-white/[0.02] text-white/40 hover:border-white/10 hover:text-white/60"
           }`}
         >
           All <span className="opacity-60">{items.length}</span>
@@ -195,10 +195,10 @@ export function GalleryClient({ initialItems }: { initialItems: Item[] }) {
         <button
           type="button"
           onClick={() => setFilter("favorites")}
-          className={`inline-flex items-center gap-1 rounded-md border px-3 py-1 text-[13px] transition-colors ${
+          className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-medium transition-all ${
             filter === "favorites"
-              ? "border-primary bg-primary/10 text-primary"
-              : "border-border text-muted-foreground hover:text-foreground"
+              ? "border-primary/30 bg-primary/10 text-primary"
+              : "border-white/[0.06] bg-white/[0.02] text-white/40 hover:border-white/10 hover:text-white/60"
           }`}
         >
           <Heart className={`size-3.5 ${filter === "favorites" ? "fill-primary" : ""}`} />
@@ -207,18 +207,21 @@ export function GalleryClient({ initialItems }: { initialItems: Item[] }) {
       </div>
 
       {shown.length === 0 ? (
-        <div className="mt-8 flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-20 text-center">
-          <p className="text-sm font-medium text-foreground">
+        <div className="glass-panel mt-8 flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/[0.08] p-16 text-center">
+          <div className="mb-4 flex size-14 items-center justify-center rounded-2xl border border-primary/10 bg-primary/5">
+            <Sparkles className="size-6 text-primary/40" strokeWidth={1} />
+          </div>
+          <p className="mb-1 text-[14px] text-white/30">
             {filter === "favorites" ? "No favorites yet" : "No ads yet"}
           </p>
-          <p className="mt-1 text-[13px] text-muted-foreground">
+          <p className="mb-6 text-[12px] text-white/20">
             {filter === "favorites"
               ? "Tap the heart on an ad to save it here."
               : "Generate your first ad in the studio."}
           </p>
           <Link
             href="/ad-studio"
-            className="ad-cta mt-4 inline-flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-medium"
+            className="ad-cta inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-[13px] font-semibold"
           >
             <Sparkles className="size-4" strokeWidth={2} />
             Go to studio
