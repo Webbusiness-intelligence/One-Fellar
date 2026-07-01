@@ -394,18 +394,18 @@ html[data-theme="rose"] {
     background-size: 200% 100%;
     animation: ad-gradient-pan 2.4s linear infinite;
   }
-  /* Premium CTA: emerald gradient with a slow sheen. */
+  /* Premium CTA: solid brand yellow with a soft glow (Genalot UI). */
   .ad-cta {
-    background: linear-gradient(120deg, oklch(0.72 0.16 163), oklch(0.8 0.13 186));
-    color: oklch(0.21 0.05 163);
+    background: var(--primary);
+    color: var(--primary-foreground);
     transition:
       filter 0.18s ease,
       transform 0.08s ease,
       box-shadow 0.18s ease;
   }
   .ad-cta:hover {
-    filter: brightness(1.05);
-    box-shadow: 0 6px 20px oklch(0.72 0.16 163 / 0.35);
+    filter: brightness(1.06);
+    box-shadow: 0 0 30px rgb(245 227 29 / 0.28);
   }
   .ad-cta:active {
     transform: translateY(1px);

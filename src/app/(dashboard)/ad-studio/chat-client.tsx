@@ -160,15 +160,17 @@ function PillSelect({
         type="button"
         title={title}
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1 rounded-lg border bg-white/5 py-1.5 pl-2.5 pr-1.5 text-[12px] transition-colors hover:border-white/25 ${
-          active ? "border-primary/40 text-primary" : "border-white/10 text-foreground/80"
+        className={`flex items-center gap-1 rounded-xl border py-2 pl-2.5 pr-1.5 text-[12px] font-medium transition-all ${
+          active
+            ? "border-primary/30 bg-primary/10 text-primary"
+            : "border-white/[0.06] bg-white/[0.03] text-white/55 hover:border-white/10 hover:bg-white/[0.06] hover:text-white/80"
         }`}
       >
         {cur?.label ?? value}
         <ChevronDown className="size-3 opacity-70" />
       </button>
       {open ? (
-        <div className="absolute bottom-full left-0 z-30 mb-2 max-h-64 w-max min-w-full overflow-y-auto rounded-xl border border-border bg-popover p-1 shadow-xl">
+        <div className="dropdown-solid animate-fade-in-up absolute bottom-full left-0 z-30 mb-2 max-h-64 w-max min-w-full overflow-y-auto rounded-xl p-1">
           {options.map((o) => (
             <button
               key={o.v}
@@ -1076,7 +1078,7 @@ async function writeCopy(a: Asset) {
 
           {error ? <p className="mb-2 px-1 text-[12px] text-destructive">{error}</p> : null}
 
-          <div className="relative rounded-2xl border border-white/10 bg-background/40 p-2">
+          <div className="glass-panel relative rounded-2xl border border-white/[0.07] p-2 transition-all duration-300 focus-within:border-primary/25 focus-within:shadow-[0_0_50px_rgb(245_227_29_/_0.08)]">
             {atQuery !== null && soulMatches.length > 0 ? (
               <div className="absolute bottom-full left-3 z-20 mb-2 max-h-72 w-72 overflow-y-auto rounded-xl border border-border bg-popover p-1.5 shadow-xl">
                 <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
@@ -1135,7 +1137,7 @@ async function writeCopy(a: Asset) {
             <div className="flex items-end gap-2">
               <div className="relative shrink-0">
                 {showAttach ? (
-                  <div className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-border bg-popover p-1.5 shadow-xl">
+                  <div className="dropdown-solid animate-fade-in-up absolute bottom-full left-0 mb-2 w-52 rounded-xl p-1.5">
                     {[
                       { icon: Package, label: "Product image", onClick: () => fileInput.current?.click() },
                       { icon: Boxes, label: "Saved product", onClick: () => setShowProducts(true) },
@@ -1213,14 +1215,14 @@ async function writeCopy(a: Asset) {
 
             {/* Bottom row: mode toggle · pill controls */}
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <div className="flex items-center rounded-lg border border-white/10 bg-white/5 p-0.5">
-                <span className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 text-[12px] font-medium text-foreground">
+              <div className="flex items-center rounded-xl border border-white/[0.06] bg-white/[0.03] p-0.5">
+                <span className="flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1.5 text-[12px] font-medium text-primary">
                   <ImageIcon className="size-3.5" />
                   Image
                 </span>
                 <a
                   href="/ad-studio/video"
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+                  className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[12px] text-white/40 transition-colors hover:text-white/70"
                 >
                   <Film className="size-3.5" />
                   Video
@@ -1230,8 +1232,10 @@ async function writeCopy(a: Asset) {
                 value={format}
                 onChange={(e) => setFormat(e.target.value)}
                 title="Size / aspect ratio"
-                className={`cursor-pointer appearance-none rounded-lg border bg-white/5 py-1.5 pl-2.5 pr-2 text-[12px] outline-none transition-colors hover:border-white/25 ${
-                  format !== "auto" ? "border-primary/40 text-primary" : "border-white/10 text-foreground/80"
+                className={`cursor-pointer appearance-none rounded-xl border py-2 pl-2.5 pr-2 text-[12px] font-medium outline-none transition-all ${
+                  format !== "auto"
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-white/[0.06] bg-white/[0.03] text-white/55 hover:border-white/10 hover:bg-white/[0.06]"
                 }`}
               >
                 {FORMATS_CHAT.map((o) => (
@@ -1256,10 +1260,10 @@ async function writeCopy(a: Asset) {
                 type="button"
                 onClick={() => setShowDirector((v) => !v)}
                 title="Director — lens, angle, lighting, look"
-                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] transition-colors hover:border-white/25 ${
+                className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-2 text-[12px] font-medium transition-all ${
                   showDirector || lens || angle || lighting || look
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-white/10 bg-white/5 text-foreground/80 hover:text-foreground"
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-white/[0.06] bg-white/[0.03] text-white/55 hover:border-white/10 hover:bg-white/[0.06] hover:text-white/80"
                 }`}
               >
                 <SlidersHorizontal className="size-3.5" />
@@ -1273,10 +1277,10 @@ async function writeCopy(a: Asset) {
                     ? "Realistic photo — real skin, film grade, lighting & lens"
                     : "Off — raw prompt (best for logos, graphics, illustration)"
                 }
-                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] transition-colors hover:border-white/25 ${
+                className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-2 text-[12px] font-medium transition-all ${
                   realism
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-white/10 bg-white/5 text-foreground/80 hover:text-foreground"
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-white/[0.06] bg-white/[0.03] text-white/55 hover:border-white/10 hover:bg-white/[0.06] hover:text-white/80"
                 }`}
               >
                 <Camera className="size-3.5" />
@@ -1287,7 +1291,7 @@ async function writeCopy(a: Asset) {
                   value={mood}
                   onChange={(e) => setMood(e.target.value)}
                   title="Mood / look — Auto lets the director choose by scene"
-                  className="cursor-pointer appearance-none rounded-lg border border-white/10 bg-white/5 py-1.5 pl-2.5 pr-2 text-[12px] text-foreground/80 outline-none transition-colors hover:border-white/25"
+                  className="cursor-pointer appearance-none rounded-xl border border-white/[0.06] bg-white/[0.03] py-2 pl-2.5 pr-2 text-[12px] font-medium text-white/55 outline-none transition-all hover:border-white/10 hover:bg-white/[0.06]"
                 >
                   <option value="auto">Mood: Auto</option>
                   <option value="romantic">Romantic</option>
