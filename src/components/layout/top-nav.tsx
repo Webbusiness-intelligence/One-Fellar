@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
-import { CreditCard, LogOut, Send, Settings, Sparkles, User } from "lucide-react";
+import { CreditCard, LogOut, Receipt, Send, Settings, Sparkles, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -143,6 +143,17 @@ export function TopNav() {
               >
                 <Settings className="size-4" />
                 Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                render={
+                  <Link
+                    href="/billing"
+                    className="text-popover-foreground focus:bg-accent focus:text-accent-foreground"
+                  />
+                }
+              >
+                <Receipt className="size-4" />
+                Billing
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuItem
