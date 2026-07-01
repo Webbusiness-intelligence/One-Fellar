@@ -29,6 +29,7 @@ import {
   PanelLeft,
   Camera,
   ChevronDown,
+  Check,
 } from "lucide-react";
 
 import { Lightbox, ActionIcon, type ViewerItem } from "./ad-result";
@@ -170,7 +171,7 @@ function PillSelect({
         <ChevronDown className="size-3 opacity-70" />
       </button>
       {open ? (
-        <div className="dropdown-solid animate-fade-in-up absolute bottom-full left-0 z-30 mb-2 max-h-64 w-max min-w-full overflow-y-auto rounded-xl p-1">
+        <div className="dropdown-solid animate-fade-in-up absolute bottom-full left-0 z-30 mb-2 w-52 overflow-hidden rounded-xl p-1.5">
           {options.map((o) => (
             <button
               key={o.v}
@@ -180,11 +181,12 @@ function PillSelect({
                 onChange(o.v);
                 setOpen(false);
               }}
-              className={`flex w-full items-center whitespace-nowrap rounded-lg px-2.5 py-1.5 text-left text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                o.v === value ? "bg-primary/10 text-primary" : "text-foreground/90 hover:bg-muted"
+              className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[12px] font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+                o.v === value ? "bg-primary/10 text-primary" : "text-white/55 hover:bg-white/[0.04] hover:text-white/80"
               }`}
             >
-              {o.label}
+              <span className="flex-1">{o.label}</span>
+              {o.v === value ? <Check className="ml-auto size-3 shrink-0" strokeWidth={2} /> : null}
             </button>
           ))}
         </div>
