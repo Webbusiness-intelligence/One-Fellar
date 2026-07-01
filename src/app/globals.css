@@ -121,7 +121,7 @@ html[data-mode="dark"] {
  * the app's light/dark mode, so the studio reads like a high-end creative tool. */
 .studio-dark {
   color-scheme: dark; /* native dropdowns / scrollbars render dark, not white */
-  --background: #101214;
+  --background: #050508; /* near-black to match the Genalot UI canvas */
   --foreground: oklch(0.985 0 0);
   --card: oklch(1 0 0 / 0.06);
   --card-2: oklch(0.21 0.014 265);

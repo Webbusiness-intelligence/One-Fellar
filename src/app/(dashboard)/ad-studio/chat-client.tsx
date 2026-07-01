@@ -881,8 +881,8 @@ async function writeCopy(a: Asset) {
           )}
         </div>
 
-        {/* Composer */}
-        <div className="relative mx-auto mb-4 w-full max-w-3xl rounded-2xl border border-white/10 bg-card/70 p-3 shadow-[0_8px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        {/* Composer — a single glass bar (Genalot UI). */}
+        <div className="glass-panel relative mx-auto mb-4 w-full max-w-[960px] rounded-2xl p-3 transition-all duration-300 focus-within:border-primary/25 focus-within:shadow-[0_0_50px_rgb(245_227_29_/_0.08)]">
           {showDirector ? (
             <div className="mb-2 grid grid-cols-2 gap-2 rounded-xl border border-border bg-background/60 p-2.5 sm:grid-cols-4">
               <DirectorSelect label="Lens" value={lens} onChange={setLens} options={LENSES} />
@@ -1078,7 +1078,7 @@ async function writeCopy(a: Asset) {
 
           {error ? <p className="mb-2 px-1 text-[12px] text-destructive">{error}</p> : null}
 
-          <div className="glass-panel relative rounded-2xl border border-white/[0.07] p-2 transition-all duration-300 focus-within:border-primary/25 focus-within:shadow-[0_0_50px_rgb(245_227_29_/_0.08)]">
+          <div className="relative">
             {atQuery !== null && soulMatches.length > 0 ? (
               <div className="absolute bottom-full left-3 z-20 mb-2 max-h-72 w-72 overflow-y-auto rounded-xl border border-border bg-popover p-1.5 shadow-xl">
                 <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
@@ -1228,22 +1228,13 @@ async function writeCopy(a: Asset) {
                   Video
                 </a>
               </div>
-              <select
+              <PillSelect
                 value={format}
-                onChange={(e) => setFormat(e.target.value)}
+                onChange={setFormat}
                 title="Size / aspect ratio"
-                className={`cursor-pointer appearance-none rounded-xl border py-2 pl-2.5 pr-2 text-[12px] font-medium outline-none transition-all ${
-                  format !== "auto"
-                    ? "border-primary/30 bg-primary/10 text-primary"
-                    : "border-white/[0.06] bg-white/[0.03] text-white/55 hover:border-white/10 hover:bg-white/[0.06]"
-                }`}
-              >
-                {FORMATS_CHAT.map((o) => (
-                  <option key={o.v} value={o.v}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+                active={format !== "auto"}
+                options={FORMATS_CHAT.map((o) => ({ v: o.v, label: o.label }))}
+              />
               <PillSelect
                 value={String(variations)}
                 onChange={(v) => setVariations(Number(v))}
@@ -1287,22 +1278,23 @@ async function writeCopy(a: Asset) {
                 Realistic
               </button>
               {realism ? (
-                <select
+                <PillSelect
                   value={mood}
-                  onChange={(e) => setMood(e.target.value)}
+                  onChange={setMood}
                   title="Mood / look — Auto lets the director choose by scene"
-                  className="cursor-pointer appearance-none rounded-xl border border-white/[0.06] bg-white/[0.03] py-2 pl-2.5 pr-2 text-[12px] font-medium text-white/55 outline-none transition-all hover:border-white/10 hover:bg-white/[0.06]"
-                >
-                  <option value="auto">Mood: Auto</option>
-                  <option value="romantic">Romantic</option>
-                  <option value="editorial">Editorial</option>
-                  <option value="cinematic">Cinematic</option>
-                  <option value="documentary">Documentary</option>
-                  <option value="golden hour">Golden hour</option>
-                  <option value="noir">Noir</option>
-                  <option value="studio">Studio</option>
-                  <option value="moody">Moody</option>
-                </select>
+                  active={mood !== "auto"}
+                  options={[
+                    { v: "auto", label: "Mood: Auto" },
+                    { v: "romantic", label: "Romantic" },
+                    { v: "editorial", label: "Editorial" },
+                    { v: "cinematic", label: "Cinematic" },
+                    { v: "documentary", label: "Documentary" },
+                    { v: "golden hour", label: "Golden hour" },
+                    { v: "noir", label: "Noir" },
+                    { v: "studio", label: "Studio" },
+                    { v: "moody", label: "Moody" },
+                  ]}
+                />
               ) : null}
               <PillSelect
                 value={model}
