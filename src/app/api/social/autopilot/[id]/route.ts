@@ -12,9 +12,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const ctx = await requireRole("agent");
     const admin = supabaseAdmin();
     const { id } = await params;
-    const b = (await req.json()) as { active?: boolean };
+    const b = (await req.json()) as { active?: boolean; runNow?: boolean };
     const patch: Record<string, unknown> = {};
     if (typeof b.active === "boolean") patch.active = b.active;
+    if (b.runNow) {
+      patch.active = true;
+      patch.next_run_at = new Date(Date.now() - 1000).toISOString(); // fires on the next 60s tick
+    }
     if (!Object.keys(patch).length) return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
 
     const { data, error } = await admin

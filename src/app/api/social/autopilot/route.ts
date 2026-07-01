@@ -34,6 +34,10 @@ export async function POST(req: Request) {
       platforms?: string[];
       intervalHours?: number;
       startAt?: string;
+      refUrls?: string[];
+      soulIds?: string[];
+      format?: string;
+      autoCaption?: boolean;
     };
     const prompt = String(b.prompt ?? "").trim().slice(0, 1000);
     const platforms = Array.isArray(b.platforms) ? b.platforms.filter((p) => typeof p === "string") : [];
@@ -57,6 +61,10 @@ export async function POST(req: Request) {
         platforms,
         interval_hours: intervalHours,
         next_run_at: nextRun,
+        ref_urls: Array.isArray(b.refUrls) ? b.refUrls.filter((u) => typeof u === "string").slice(0, 4) : [],
+        soul_ids: Array.isArray(b.soulIds) ? b.soulIds.filter((s) => typeof s === "string").slice(0, 4) : [],
+        format: ["1:1", "9:16", "4:5", "16:9"].includes(String(b.format)) ? String(b.format) : "1:1",
+        auto_caption: b.autoCaption === true,
       })
       .select("*")
       .single();
