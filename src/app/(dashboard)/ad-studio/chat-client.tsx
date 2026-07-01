@@ -30,6 +30,22 @@ import {
   Camera,
   ChevronDown,
   Check,
+  Maximize2,
+  Square,
+  RectangleVertical,
+  RectangleHorizontal,
+  Smartphone,
+  Monitor,
+  LayoutGrid,
+  GalleryHorizontal,
+  Smile,
+  Layers,
+  Sun,
+  Moon,
+  Cloud,
+  Zap,
+  Palette,
+  type LucideIcon,
 } from "lucide-react";
 
 import { Lightbox, ActionIcon, type ViewerItem } from "./ad-result";
@@ -62,16 +78,16 @@ const SUGGESTIONS = [
 
 // Director controls — professional art-direction the user can dial in.
 const FORMATS_CHAT = [
-  { v: "auto", label: "Auto size" },
-  { v: "1:1", label: "Square · 1:1" },
-  { v: "4:5", label: "Portrait · 4:5" },
-  { v: "9:16", label: "Story · 9:16" },
-  { v: "16:9", label: "Wide · 16:9" },
-  { v: "4:3", label: "Landscape · 4:3" },
-  { v: "3:4", label: "Portrait tall · 3:4" },
-  { v: "3:2", label: "Photo · 3:2" },
-  { v: "2:3", label: "Photo tall · 2:3" },
-  { v: "21:9", label: "Cinematic · 21:9" },
+  { v: "auto", label: "Auto size", icon: Maximize2 },
+  { v: "1:1", label: "Square · 1:1", icon: Square },
+  { v: "4:5", label: "Portrait · 4:5", icon: RectangleVertical },
+  { v: "9:16", label: "Story · 9:16", icon: Smartphone },
+  { v: "16:9", label: "Wide · 16:9", icon: Monitor },
+  { v: "4:3", label: "Landscape · 4:3", icon: RectangleHorizontal },
+  { v: "3:4", label: "Portrait tall · 3:4", icon: RectangleVertical },
+  { v: "3:2", label: "Photo · 3:2", icon: RectangleHorizontal },
+  { v: "2:3", label: "Photo tall · 2:3", icon: RectangleVertical },
+  { v: "21:9", label: "Cinematic · 21:9", icon: Clapperboard },
 ];
 const LENSES = [
   { v: "", label: "Lens · Auto" },
@@ -115,34 +131,36 @@ const LOOKS = [
 // Image models offered in the composer. "auto" lets the route pick (GPT Image 2 for
 // Souls/Best, else 1.5). The prompt-only models ignore references/Souls.
 const MODELS = [
-  { v: "auto", label: "Model: Auto" },
-  { v: "gpt-image-2", label: "GPT Image 2 · best" },
-  { v: "gpt-image-1.5", label: "GPT Image 1.5" },
-  { v: "nano-banana-pro", label: "Nano Banana Pro" },
-  { v: "nano-banana", label: "Nano Banana" },
-  { v: "imagen4-ultra", label: "Imagen 4 Ultra" },
-  { v: "flux-pro", label: "Flux Pro 1.1" },
-  { v: "recraft", label: "Recraft V3" },
-  { v: "ideogram", label: "Ideogram V3" },
+  { v: "auto", label: "Model: Auto", icon: Wand2 },
+  { v: "gpt-image-2", label: "GPT Image 2 · best", icon: Sparkles },
+  { v: "gpt-image-1.5", label: "GPT Image 1.5", icon: ImageIcon },
+  { v: "nano-banana-pro", label: "Nano Banana Pro", icon: Zap },
+  { v: "nano-banana", label: "Nano Banana", icon: Zap },
+  { v: "imagen4-ultra", label: "Imagen 4 Ultra", icon: Aperture },
+  { v: "flux-pro", label: "Flux Pro 1.1", icon: Layers },
+  { v: "recraft", label: "Recraft V3", icon: Palette },
+  { v: "ideogram", label: "Ideogram V3", icon: PenLine },
 ];
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : "Something went wrong");
 
 // A pill dropdown that opens UPWARD with its own scroll — native <select> popups are
 // unreliable inside the glass (backdrop-blur) composer, so we render our own list.
-type PillOption = { v: string; label: string; disabled?: boolean };
+type PillOption = { v: string; label: string; disabled?: boolean; icon?: LucideIcon };
 function PillSelect({
   value,
   options,
   onChange,
   title,
   active,
+  icon: TriggerIcon,
 }: {
   value: string;
   options: PillOption[];
   onChange: (v: string) => void;
   title?: string;
   active?: boolean;
+  icon?: LucideIcon;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -161,14 +179,15 @@ function PillSelect({
         type="button"
         title={title}
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1 rounded-xl border py-2 pl-2.5 pr-1.5 text-[12px] font-medium transition-all ${
+        className={`flex items-center gap-1.5 rounded-xl border py-2 pl-2.5 pr-2 text-[12px] font-medium transition-all ${
           active
             ? "border-primary/30 bg-primary/10 text-primary"
             : "border-white/[0.06] bg-white/[0.03] text-white/55 hover:border-white/10 hover:bg-white/[0.06] hover:text-white/80"
         }`}
       >
-        {cur?.label ?? value}
-        <ChevronDown className="size-3 opacity-70" />
+        {TriggerIcon ? <TriggerIcon className="size-3.5 shrink-0" strokeWidth={1.5} /> : null}
+        <span>{cur?.label ?? value}</span>
+        <ChevronDown className="size-3 opacity-70" strokeWidth={2} />
       </button>
       {open ? (
         <div className="dropdown-solid animate-fade-in-up absolute bottom-full left-0 z-30 mb-2 w-52 overflow-hidden rounded-xl p-1.5">
@@ -185,6 +204,7 @@ function PillSelect({
                 o.v === value ? "bg-primary/10 text-primary" : "text-white/55 hover:bg-white/[0.04] hover:text-white/80"
               }`}
             >
+              {o.icon ? <o.icon className="size-3.5 shrink-0" strokeWidth={1.5} /> : null}
               <span className="flex-1">{o.label}</span>
               {o.v === value ? <Check className="ml-auto size-3 shrink-0" strokeWidth={2} /> : null}
             </button>
@@ -1235,18 +1255,20 @@ async function writeCopy(a: Asset) {
                 onChange={setFormat}
                 title="Size / aspect ratio"
                 active={format !== "auto"}
-                options={FORMATS_CHAT.map((o) => ({ v: o.v, label: o.label }))}
+                icon={Maximize2}
+                options={FORMATS_CHAT}
               />
               <PillSelect
                 value={String(variations)}
                 onChange={(v) => setVariations(Number(v))}
                 title="How many variations to generate"
                 active={variations > 1}
+                icon={Copy}
                 options={[
-                  { v: "1", label: "1 image" },
-                  { v: "4", label: planFree ? "4 images · Pro" : "4 images", disabled: planFree },
-                  { v: "8", label: planFree ? "8 images · Pro" : "8 images", disabled: planFree },
-                  { v: "12", label: "12 images" },
+                  { v: "1", label: "1 image", icon: ImageIcon },
+                  { v: "4", label: planFree ? "4 images · Pro" : "4 images", disabled: planFree, icon: LayoutGrid },
+                  { v: "8", label: planFree ? "8 images · Pro" : "8 images", disabled: planFree, icon: GalleryHorizontal },
+                  { v: "12", label: "12 images", icon: GalleryHorizontal },
                 ]}
               />
               <button
@@ -1285,16 +1307,17 @@ async function writeCopy(a: Asset) {
                   onChange={setMood}
                   title="Mood / look — Auto lets the director choose by scene"
                   active={mood !== "auto"}
+                  icon={Smile}
                   options={[
-                    { v: "auto", label: "Mood: Auto" },
-                    { v: "romantic", label: "Romantic" },
-                    { v: "editorial", label: "Editorial" },
-                    { v: "cinematic", label: "Cinematic" },
-                    { v: "documentary", label: "Documentary" },
-                    { v: "golden hour", label: "Golden hour" },
-                    { v: "noir", label: "Noir" },
-                    { v: "studio", label: "Studio" },
-                    { v: "moody", label: "Moody" },
+                    { v: "auto", label: "Mood: Auto", icon: Smile },
+                    { v: "romantic", label: "Romantic", icon: Heart },
+                    { v: "editorial", label: "Editorial", icon: Layers },
+                    { v: "cinematic", label: "Cinematic", icon: Clapperboard },
+                    { v: "documentary", label: "Documentary", icon: Aperture },
+                    { v: "golden hour", label: "Golden hour", icon: Sun },
+                    { v: "noir", label: "Noir", icon: Moon },
+                    { v: "studio", label: "Studio", icon: Camera },
+                    { v: "moody", label: "Moody", icon: Cloud },
                   ]}
                 />
               ) : null}
@@ -1303,6 +1326,7 @@ async function writeCopy(a: Asset) {
                 onChange={setModel}
                 title="Model — Auto picks GPT Image 2 for Souls, else 1.5. Prompt-only models ignore references."
                 active={model !== "auto"}
+                icon={Wand2}
                 options={MODELS}
               />
               <SkillPicker value={skillId} onChange={setSkillId} kind="image" />
