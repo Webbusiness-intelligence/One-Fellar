@@ -1,8 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, Plus, Loader2, Trash2, X, ChevronLeft, ChevronRight, Volume2, VolumeX, Scissors } from "lucide-react";
+import {
+  Sparkles,
+  Plus,
+  Loader2,
+  Trash2,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Volume2,
+  VolumeX,
+  Scissors,
+  Film,
+  Zap,
+  Gauge,
+  Monitor,
+  Clock,
+  Copy,
+  LayoutGrid,
+  GalleryHorizontal,
+  Smile,
+  Moon,
+  Palette,
+  Clapperboard,
+} from "lucide-react";
 import { waitForJob } from "@/lib/ai-ads/wait-job";
+import { PillSelect } from "../pill-select";
 import { SkillPicker } from "../skill-picker";
 import { PromptEnhancer } from "../prompt-enhancer";
 import { MentionTextarea } from "../mention-textarea";
@@ -18,7 +42,33 @@ const ENGINES = [
   { id: "kling-turbo", label: "Kling Turbo · fast", sec: 0.07 },
 ] as const;
 
-const RESOLUTIONS = ["720p", "1080p"];
+const ENGINE_OPTS = [
+  { v: "seedance-pro", label: "Seedance 2.0 · Pro", icon: Sparkles },
+  { v: "seedance-fast", label: "Seedance 2.0 · Fast", icon: Zap },
+  { v: "kling-pro", label: "Kling Pro · cinematic", icon: Film },
+  { v: "kling-turbo", label: "Kling Turbo · fast", icon: Gauge },
+];
+const RES_OPTS = [
+  { v: "720p", label: "720p", icon: Monitor },
+  { v: "1080p", label: "1080p", icon: Monitor },
+];
+const COUNT_OPTS = [
+  { v: "1", label: "1 variation", icon: Copy },
+  { v: "2", label: "2 variations", icon: LayoutGrid },
+  { v: "4", label: "4 variations", icon: GalleryHorizontal },
+];
+const MOOD_OPTS = [
+  { v: "auto", label: "Mood: Auto", icon: Smile },
+  { v: "romantic", label: "Romantic", icon: Sparkles },
+  { v: "cinematic", label: "Cinematic", icon: Clapperboard },
+  { v: "documentary", label: "Documentary", icon: Film },
+  { v: "fashion", label: "Fashion", icon: Palette },
+  { v: "music video", label: "Music video", icon: Zap },
+  { v: "noir", label: "Noir", icon: Moon },
+  { v: "luxury", label: "Luxury", icon: Sparkles },
+  { v: "ugc", label: "UGC / social", icon: Smile },
+  { v: "commercial", label: "Commercial / ad", icon: Sparkles },
+];
 
 // Durations each engine actually supports on fal.
 function durationsFor(engine: string): number[] {
@@ -87,8 +137,6 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
   const perTake = engineSec * duration * resMult * 100 + (usesReference ? 0 : 10);
   const credits = Math.round(perTake * count);
   const soulHandles = new Set(souls.map((s) => s.handle.toLowerCase()));
-  const PILL =
-    "cursor-pointer appearance-none rounded-lg border border-white/10 bg-white/5 py-1.5 pl-2.5 pr-2 text-[12px] text-foreground/80 outline-none transition-colors hover:border-white/25";
 
   function onPromptInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const val = e.target.value;
@@ -190,23 +238,23 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <div className="mb-4">
-        <div className="text-lg font-semibold text-foreground">Video</div>
-        <p className="text-sm text-muted-foreground">
+    <div className="mx-auto max-w-[1100px]">
+      <div className="mb-8">
+        <h1 className="mb-2 font-heading text-3xl font-semibold text-foreground">Video</h1>
+        <p className="text-[13px] leading-relaxed text-white/40">
           Describe a clip and generate it. Add a start frame with{" "}
-          <span className="text-foreground/80">＋</span>, or bring in one or more saved assets with{" "}
-          <span className="text-foreground/80">@</span> — Seedance 2.0 seeds them as references and keeps several
-          subjects consistent throughout.
+          <span className="font-medium text-white/60">＋</span>, or bring in one or more saved assets with{" "}
+          <span className="font-medium text-primary/70">@</span> — Seedance 2.0 seeds them as references and keeps
+          several subjects consistent throughout.
         </p>
       </div>
 
       {/* Create panel */}
-      <div className="mb-6 rounded-2xl border border-white/10 bg-card/50 p-3 backdrop-blur-sm">
+      <div className="glass-panel mb-6 rounded-2xl border border-white/[0.07] p-6">
         <div className="relative">
           {atQuery !== null && refMatches.length > 0 ? (
-            <div className="absolute bottom-full left-0 z-20 mb-2 max-h-72 w-72 overflow-y-auto rounded-xl border border-border bg-popover p-1.5 shadow-xl">
-              <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
+            <div className="dropdown-solid animate-fade-in-up absolute bottom-full left-0 z-20 mb-2 max-h-72 w-72 overflow-y-auto rounded-xl p-1.5">
+              <div className="px-2 py-1 text-[11px] font-medium text-white/40">
                 Add a Soul ID subject{atQuery ? ` matching “${atQuery}”` : ""}
               </div>
               {refMatches.map((s) => (
@@ -214,7 +262,7 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
                   key={s.id}
                   type="button"
                   onClick={() => pickRef(s)}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-muted"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={s.url} alt="" className="size-8 rounded-md object-cover" />
@@ -222,7 +270,7 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
                     <span className="block truncate text-[13px] text-foreground">{s.name}</span>
                     <span className="block truncate font-mono text-[11px] text-primary">@{s.handle}</span>
                   </span>
-                  <span className="text-[10px] capitalize text-muted-foreground">{s.kind}</span>
+                  <span className="text-[10px] capitalize text-white/40">{s.kind}</span>
                 </button>
               ))}
             </div>
@@ -234,8 +282,8 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
             rows={2}
             placeholder="Describe the video — the scene, motion and mood… use @ to add one or more Soul ID subjects"
             handles={soulHandles}
-            boxClassName="rounded-lg border border-white/10 bg-white/5 focus-within:border-primary"
-            fieldClassName="px-3 py-2 text-sm"
+            boxClassName="rounded-xl border border-white/[0.08] bg-white/[0.03] transition-all focus-within:border-primary/30 focus-within:shadow-[0_0_20px_rgb(245_227_29_/_0.06)]"
+            fieldClassName="px-4 py-3 text-sm"
           />
           <div
             className={`mt-1 pr-1 text-right text-[11px] ${
@@ -295,107 +343,82 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
           <button
             type="button"
             onClick={() => fileInput.current?.click()}
-            className="flex h-9 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 text-[12px] text-foreground/80 transition-colors hover:text-foreground"
+            className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[12px] font-medium text-white/55 transition-all hover:border-white/10 hover:bg-white/[0.06] hover:text-white/80"
           >
-            <Plus className="size-4" /> Start image
+            <Plus className="size-3.5" strokeWidth={2} /> Start image
           </button>
-          <select value={engine} onChange={(e) => setEngine(e.target.value)} title="Video engine" className={PILL}>
-            {ENGINES.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.label}
-              </option>
-            ))}
-          </select>
+          <PillSelect value={engine} onChange={setEngine} title="Video engine" active icon={Film} options={ENGINE_OPTS} />
           {supportsRes ? (
-            <select
+            <PillSelect
               value={resolution}
-              onChange={(e) => setResolution(e.target.value)}
+              onChange={setResolution}
               title="Resolution / quality"
-              className={PILL}
-            >
-              {RESOLUTIONS.map((r) => (
-                <option key={r} value={r}>
-                  {r === "4k" ? "4K" : r}
-                </option>
-              ))}
-            </select>
+              active={resolution !== "720p"}
+              icon={Monitor}
+              options={RES_OPTS}
+            />
           ) : null}
-          <select
-            value={duration}
-            onChange={(e) => setDuration(Number(e.target.value))}
+          <PillSelect
+            value={String(duration)}
+            onChange={(v) => setDuration(Number(v))}
             title="Clip length"
-            className={PILL}
-          >
-            {durationsFor(engine).map((d) => (
-              <option key={d} value={d}>
-                {d} seconds
-              </option>
-            ))}
-          </select>
-          <select
-            value={count}
-            onChange={(e) => setCount(Number(e.target.value))}
+            active
+            icon={Clock}
+            options={durationsFor(engine).map((d) => ({ v: String(d), label: `${d} seconds`, icon: Clock }))}
+          />
+          <PillSelect
+            value={String(count)}
+            onChange={(v) => setCount(Number(v))}
             title="How many variations to generate"
-            className={PILL}
-          >
-            <option value={1}>1 variation</option>
-            <option value={2}>2 variations</option>
-            <option value={4}>4 variations</option>
-          </select>
+            active={count > 1}
+            icon={Copy}
+            options={COUNT_OPTS}
+          />
           {supportsAudio ? (
             <button
               type="button"
               onClick={() => setAudio((v) => !v)}
               title={audio ? "Sound on" : "Sound off"}
-              className={`flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[12px] transition-colors ${
+              className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-medium transition-all ${
                 audio
-                  ? "border-primary/40 bg-primary/10 text-primary"
-                  : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-white/[0.06] bg-white/[0.03] text-white/55 hover:border-white/10 hover:text-white/80"
               }`}
             >
-              {audio ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+              {audio ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
               {audio ? "Sound on" : "Sound off"}
             </button>
           ) : (
             <span
-              className="flex h-9 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 text-[12px] text-muted-foreground"
+              className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[12px] font-medium text-white/40"
               title="This engine renders silent video"
             >
-              <VolumeX className="size-4" /> No sound
+              <VolumeX className="size-3.5" /> No sound
             </span>
           )}
           <button
             type="button"
             onClick={() => setCinematic((v) => !v)}
             title={cinematic ? "Cinematic director on — applies realistic film craft" : "Raw prompt (director off)"}
-            className={`flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[12px] transition-colors ${
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-medium transition-all ${
               cinematic
-                ? "border-primary/40 bg-primary/10 text-primary"
-                : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+                ? "border-primary/30 bg-primary/10 text-primary"
+                : "border-white/[0.06] bg-white/[0.03] text-white/55 hover:border-white/10 hover:text-white/80"
             }`}
           >
-            <Sparkles className="size-4" />
+            <Sparkles className="size-3.5" />
             Cinematic
           </button>
           {cinematic ? (
             <>
-              <select
+              <PillSelect
                 value={mood}
-                onChange={(e) => setMood(e.target.value)}
+                onChange={setMood}
                 title="Mood / style — Auto lets the director choose by scene"
-                className={PILL}
-              >
-                <option value="auto">Mood: Auto</option>
-                <option value="romantic">Romantic</option>
-                <option value="cinematic">Cinematic</option>
-                <option value="documentary">Documentary</option>
-                <option value="fashion">Fashion</option>
-                <option value="music video">Music video</option>
-                <option value="noir">Noir</option>
-                <option value="luxury">Luxury</option>
-                <option value="ugc">UGC / social</option>
-                <option value="commercial">Commercial / ad</option>
-              </select>
+                active={mood !== "auto"}
+                icon={Smile}
+                options={MOOD_OPTS}
+              />
               <button
                 type="button"
                 onClick={() => setCuts((v) => !v)}
@@ -404,13 +427,13 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
                     ? "Cut-to-cut on — renders multiple shots of the same subject and edits them together"
                     : "Single continuous shot"
                 }
-                className={`flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[12px] transition-colors ${
+                className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-medium transition-all ${
                   cuts
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-white/[0.06] bg-white/[0.03] text-white/55 hover:border-white/10 hover:text-white/80"
                 }`}
               >
-                <Scissors className="size-4" />
+                <Scissors className="size-3.5" />
                 Cuts
               </button>
               <SkillPicker value={skillId} onChange={setSkillId} kind="video" />
@@ -479,11 +502,12 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
 
       {/* Library */}
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-16 text-center">
-          <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-primary/10">
-            <Sparkles className="size-6 text-primary" strokeWidth={2} />
+        <div className="glass-panel flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/[0.08] p-12 text-center">
+          <div className="mb-4 flex size-14 items-center justify-center rounded-2xl border border-primary/10 bg-primary/5">
+            <Film className="size-6 text-primary/40" strokeWidth={1} />
           </div>
-          <p className="text-sm text-muted-foreground">No videos yet — describe your first clip above.</p>
+          <p className="mb-1 text-[14px] text-white/30">No videos yet</p>
+          <p className="text-[12px] text-white/20">Describe your first clip above.</p>
         </div>
       ) : (
         <div className="group/scroller relative">
