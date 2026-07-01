@@ -27,6 +27,74 @@ function StatusDot({ s }: { s: Post["status"] }) {
   return <span className={cn("inline-block h-1.5 w-1.5 rounded-full", c)} />;
 }
 
+// Brand icons were removed from lucide, so platforms show as brand-coloured dots.
+const PLATFORM_COLOR: Record<string, string> = {
+  instagram: "#E4405F",
+  facebook: "#1877F2",
+  linkedin: "#0A66C2",
+  youtube: "#FF0000",
+  tiktok: "#25F4EE",
+  twitter: "#ffffff",
+  x: "#ffffff",
+  pinterest: "#E60023",
+};
+const STATUS: Record<Post["status"], { dot: string; text: string; label: string }> = {
+  posted: { dot: "bg-emerald-400", text: "text-emerald-400", label: "Posted" },
+  failed: { dot: "bg-destructive", text: "text-destructive", label: "Failed" },
+  scheduled: { dot: "bg-primary", text: "text-primary", label: "Scheduled" },
+};
+
+function PlatformIcon({ id, size = 8 }: { id: string; size?: number }) {
+  const color = PLATFORM_COLOR[id.toLowerCase()] ?? "#ffffff";
+  return (
+    <span className="inline-block rounded-full" style={{ background: color, width: size, height: size }} />
+  );
+}
+
+// Hover preview that pops above a calendar post thumbnail.
+function PostTooltip({ p }: { p: Post }) {
+  const st = STATUS[p.status];
+  const t = new Date(p.scheduled_at ?? p.created_at);
+  return (
+    <div className="dropdown-solid animate-fade-in-up absolute bottom-full left-0 z-[60] mb-2 w-60 overflow-hidden rounded-xl">
+      <div className="relative h-28">
+        {p.media_urls[0] ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={p.media_urls[0]} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full bg-white/5" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+        <div className="absolute inset-x-3 bottom-2">
+          <div className="mb-1 flex items-center gap-1.5">
+            <span className={cn("h-1.5 w-1.5 rounded-full", st.dot)} />
+            <span className={cn("text-[10px] font-semibold", st.text)}>{st.label}</span>
+          </div>
+          <p className="truncate text-[11px] font-medium text-white/70">{p.caption || "(no caption)"}</p>
+        </div>
+      </div>
+      <div className="p-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            {p.platforms.slice(0, 4).map((pl) => (
+              <span key={pl} className="flex h-5 w-5 items-center justify-center rounded-md bg-white/[0.06]">
+                <PlatformIcon id={pl} size={11} />
+              </span>
+            ))}
+            {p.platforms.length > 4 && (
+              <span className="ml-0.5 text-[9px] text-white/30">+{p.platforms.length - 4}</span>
+            )}
+          </div>
+          <span className="text-[10px] text-white/30">
+            {t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+          </span>
+        </div>
+        {p.error && <p className="mt-2 border-t border-white/[0.06] pt-2 text-[10px] text-destructive">{p.error}</p>}
+      </div>
+    </div>
+  );
+}
+
 function PostRow({ p }: { p: Post }) {
   const t = new Date(p.scheduled_at ?? p.created_at);
   return (
@@ -59,6 +127,8 @@ export function SocialClient() {
   });
   const [selDay, setSelDay] = useState<string | null>(() => dayKey(new Date()));
   const [dialog, setDialog] = useState(false);
+  const [hoveredPost, setHoveredPost] = useState<string | null>(null);
+  const [hoveredDay, setHoveredDay] = useState<string | null>(null);
 
   async function load() {
     const r = await fetch("/api/social/posts");
@@ -164,11 +234,13 @@ export function SocialClient() {
               const k = dayKey(d);
               const ps = byDay[k] ?? [];
               return (
-                <button
+                <div
                   key={i}
-                  onClick={() => setSelDay(k)}
+                  onClick={() => inMonth(d) && setSelDay(k)}
+                  onMouseEnter={() => inMonth(d) && setHoveredDay(k)}
+                  onMouseLeave={() => setHoveredDay(null)}
                   className={cn(
-                    "flex min-h-[90px] flex-col rounded-xl border p-1.5 text-left transition-all",
+                    "relative flex min-h-[90px] cursor-pointer flex-col rounded-xl border p-1.5 text-left transition-all",
                     selDay === k
                       ? "border-primary/30 bg-primary/[0.04]"
                       : inMonth(d)
@@ -176,30 +248,76 @@ export function SocialClient() {
                         : "border-transparent opacity-40",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "mb-1 grid h-6 w-6 place-items-center text-[12px] font-medium",
-                      isToday(d)
-                        ? "rounded-full bg-primary font-semibold text-primary-foreground"
-                        : inMonth(d)
-                          ? "text-white/60"
-                          : "text-white/15",
-                    )}
-                  >
-                    {d.getDate()}
-                  </span>
-                  <div className="flex flex-1 flex-wrap content-start gap-1 overflow-hidden">
-                    {ps.slice(0, 4).map((p) =>
-                      p.media_urls[0] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img key={p.id} src={p.media_urls[0]} alt="" className="h-5 w-5 rounded object-cover" />
-                      ) : (
-                        <StatusDot key={p.id} s={p.status} />
-                      ),
-                    )}
-                    {ps.length > 4 && <span className="text-[10px] text-muted-foreground">+{ps.length - 4}</span>}
+                  <div className="mb-1 flex items-center justify-between">
+                    <span
+                      className={cn(
+                        "grid h-6 w-6 place-items-center text-[12px] font-medium",
+                        isToday(d)
+                          ? "rounded-full bg-primary font-semibold text-primary-foreground"
+                          : inMonth(d)
+                            ? "text-white/60"
+                            : "text-white/15",
+                      )}
+                    >
+                      {d.getDate()}
+                    </span>
+                    {ps.length > 0 && <span className="text-[9px] font-bold text-white/20">{ps.length}</span>}
                   </div>
-                </button>
+
+                  {ps.length > 0 && (
+                    <div className="flex flex-wrap content-start gap-0.5">
+                      {ps.slice(0, 4).map((p) => (
+                        <div
+                          key={p.id}
+                          className="relative shrink-0"
+                          style={{
+                            width: ps.length === 1 ? "100%" : ps.length === 2 ? "calc(50% - 2px)" : "calc(33% - 2px)",
+                            aspectRatio: "1 / 1",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.stopPropagation();
+                            setHoveredPost(p.id);
+                          }}
+                          onMouseLeave={() => setHoveredPost(null)}
+                        >
+                          <div className="relative h-full w-full overflow-hidden rounded-md bg-white/5">
+                            {p.media_urls[0] ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={p.media_urls[0]} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="grid h-full w-full place-items-center">
+                                <StatusDot s={p.status} />
+                              </span>
+                            )}
+                            <div className="absolute bottom-0.5 left-0.5 flex gap-0.5">
+                              {p.platforms.slice(0, 2).map((pl) => (
+                                <span
+                                  key={pl}
+                                  className="flex h-2.5 w-2.5 items-center justify-center rounded-sm bg-black/50 backdrop-blur"
+                                >
+                                  <PlatformIcon id={pl} size={7} />
+                                </span>
+                              ))}
+                            </div>
+                            <span className={cn("absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full", STATUS[p.status].dot)} />
+                          </div>
+                          {hoveredPost === p.id && <PostTooltip p={p} />}
+                        </div>
+                      ))}
+                      {ps.length > 4 && (
+                        <div className="mt-0.5 w-full text-center text-[9px] text-white/25">+{ps.length - 4} more</div>
+                      )}
+                    </div>
+                  )}
+
+                  {inMonth(d) && ps.length === 0 && hoveredDay === k && (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/[0.06] text-white/25">
+                        <Plus className="size-3" />
+                      </span>
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
