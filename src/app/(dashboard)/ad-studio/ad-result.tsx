@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Heart, Copy, Download, Trash2, Check, X, Wand2, Maximize2, ImagePlus, Loader2, Frame, Scissors, LayoutGrid, Fingerprint, FileText } from "lucide-react";
+import { Heart, Copy, Download, Send, Trash2, Check, X, Wand2, Maximize2, ImagePlus, Loader2, Frame, Scissors, LayoutGrid, Fingerprint, FileText } from "lucide-react";
+import { ScheduleDialog } from "../social/schedule-dialog";
 
 const REFRAME_FORMATS = ["1:1", "4:5", "9:16", "16:9", "4:3", "3:4"];
 
@@ -62,6 +63,7 @@ export function ResultCard({
   onVariations?: (i: ViewerItem) => void;
   copied: boolean;
 }) {
+  const [share, setShare] = useState(false);
   return (
     <div className="group relative overflow-hidden rounded-xl border border-border bg-card">
       <button type="button" onClick={() => onOpen(item)} className="block w-full overflow-hidden">
@@ -73,6 +75,9 @@ export function ResultCard({
         />
       </button>
       <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <ActionIcon onClick={() => setShare(true)} title="Schedule / post">
+          <Send className="size-3.5" />
+        </ActionIcon>
         {onVariations && item.scene ? (
           <ActionIcon onClick={() => onVariations(item)} title="More like this">
             <Wand2 className="size-3.5" />
@@ -109,6 +114,7 @@ export function ResultCard({
         </span>
         {item.favorite ? <Heart className="size-3.5 shrink-0 fill-primary text-primary" /> : null}
       </div>
+      <ScheduleDialog open={share} onClose={() => setShare(false)} initialUrl={item.url} />
     </div>
   );
 }
