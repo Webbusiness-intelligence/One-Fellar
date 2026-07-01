@@ -3,24 +3,11 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { MessageSquare, UsersRound } from "lucide-react";
+import { AuthShell, AuthField, AuthError } from "../auth-ui";
 
-// `useSearchParams` opts the component out of static prerendering
-// unless it sits under a Suspense boundary. We split the form into
-// a child component so the outer page can prerender the chrome
-// (background, card frame) while the form hydrates with the query
-// string on the client.
+// `useSearchParams` opts out of static prerendering unless wrapped in Suspense.
 export default function LoginPage() {
   return (
     <Suspense fallback={null}>
@@ -31,13 +18,12 @@ export default function LoginPage() {
 
 function LoginPageInner() {
   const searchParams = useSearchParams();
-  // Forwarded from `/join/<token>` when the visitor already has an
-  // account. After a successful sign-in we send them to the join
-  // page to accept rather than to /dashboard.
+  // Forwarded from `/join/<token>` when the visitor already has an account.
   const inviteToken = searchParams.get("invite");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -48,114 +34,92 @@ function LoginPageInner() {
     setError(null);
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError(error.message);
       setLoading(false);
       return;
     }
-
-    if (inviteToken) {
-      router.push(`/join/${encodeURIComponent(inviteToken)}`);
-    } else {
-      router.push("/dashboard");
-    }
+    router.push(inviteToken ? `/join/${encodeURIComponent(inviteToken)}` : "/dashboard");
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md border-border bg-card">
-        <CardHeader className="items-center text-center">
-          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-            {inviteToken ? (
-              <UsersRound className="h-6 w-6 text-primary" />
-            ) : (
-              <MessageSquare className="h-6 w-6 text-primary" />
-            )}
-          </div>
-          <CardTitle className="text-xl text-foreground">
-            {inviteToken ? "Sign in to accept" : "Welcome back"}
-          </CardTitle>
-          <CardDescription className="text-muted-foreground">
-            {inviteToken
-              ? "Sign in and we'll take you to the invitation."
-              : "Sign in to your account"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="flex flex-col gap-4">
-            {error && (
-              <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-                {error}
-              </div>
-            )}
+    <AuthShell mode="login">
+      <h2 className="mb-1 text-2xl font-semibold text-white">
+        {inviteToken ? "Sign in to accept" : "Welcome back"}
+      </h2>
+      <p className="mb-6 text-[13px] text-white/40">
+        {inviteToken ? "Sign in and we'll take you to the invitation." : "Sign in to continue creating."}
+      </p>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email" className="text-muted-foreground">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20"
-              />
-            </div>
+      <form onSubmit={handleLogin} className="space-y-4">
+        {error ? <AuthError>{error}</AuthError> : null}
 
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-muted-foreground">
-                  Password
-                </Label>
-                <Link
-                  href="/forgot-password"
-                  className="text-sm text-primary hover:text-primary/80"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20"
-              />
-            </div>
+        <div>
+          <label className="mb-1.5 block text-[12px] font-medium text-white/50">Email</label>
+          <AuthField
+            icon={Mail}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+            required
+            autoComplete="email"
+          />
+        </div>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="mt-2 h-10 w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {loading ? "Signing in..." : "Sign in"}
-            </Button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link
-              href={
-                inviteToken
-                  ? `/signup?invite=${encodeURIComponent(inviteToken)}`
-                  : "/signup"
-              }
-              className="text-primary hover:text-primary/80"
-            >
-              Create account
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="text-[12px] font-medium text-white/50">Password</label>
+            <Link href="/forgot-password" className="text-[12px] font-medium text-primary/60 transition-colors hover:text-primary">
+              Forgot?
             </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+          </div>
+          <AuthField
+            icon={Lock}
+            type={showPass ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            required
+            autoComplete="current-password"
+            rightSlot={
+              <button
+                type="button"
+                onClick={() => setShowPass((v) => !v)}
+                aria-label={showPass ? "Hide password" : "Show password"}
+                className="absolute right-3.5 text-white/20 transition-colors hover:text-white/40"
+              >
+                {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            }
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="ad-cta flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-[14px] font-semibold disabled:opacity-60"
+        >
+          {loading ? (
+            "Signing in…"
+          ) : (
+            <>
+              Sign in <ArrowRight className="size-3.5" strokeWidth={2.5} />
+            </>
+          )}
+        </button>
+      </form>
+
+      <p className="mt-5 text-center text-[12px] text-white/30">
+        Don&apos;t have an account?{" "}
+        <Link
+          href={inviteToken ? `/signup?invite=${encodeURIComponent(inviteToken)}` : "/signup"}
+          className="font-medium text-primary/60 transition-colors hover:text-primary"
+        >
+          Sign up
+        </Link>
+      </p>
+    </AuthShell>
   );
 }

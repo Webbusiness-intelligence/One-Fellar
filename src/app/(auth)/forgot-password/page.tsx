@@ -3,17 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { MessageSquare, CheckCircle, ArrowLeft } from "lucide-react";
+import { Mail, ArrowLeft, ArrowRight, CheckCircle } from "lucide-react";
+import { AuthShell, AuthField, AuthError } from "../auth-ui";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -30,102 +21,80 @@ export default function ForgotPasswordPage() {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     });
-
     if (error) {
       setError(error.message);
       setLoading(false);
       return;
     }
-
     setSuccess(true);
     setLoading(false);
   };
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <Card className="w-full max-w-md border-border bg-card">
-          <CardHeader className="items-center text-center">
-            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-              <CheckCircle className="h-6 w-6 text-primary" />
-            </div>
-            <CardTitle className="text-xl text-foreground">
-              Check your email
-            </CardTitle>
-            <CardDescription className="text-muted-foreground">
-              We&apos;ve sent a password reset link to{" "}
-              <span className="text-foreground">{email}</span>. Please check your
-              inbox.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/login">
-              <Button
-                variant="outline"
-                className="w-full border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                Back to sign in
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      <AuthShell>
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl border border-primary/10 bg-primary/5">
+            <CheckCircle className="size-6 text-primary/60" />
+          </div>
+          <h2 className="mb-1 text-2xl font-semibold text-white">Check your email</h2>
+          <p className="mb-6 text-[13px] leading-relaxed text-white/40">
+            We&apos;ve sent a password reset link to <span className="text-white/70">{email}</span>.
+          </p>
+          <Link
+            href="/login"
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-5 py-3 text-[13px] font-medium text-white/70 transition-all hover:border-white/[0.12] hover:bg-white/[0.06]"
+          >
+            Back to sign in
+          </Link>
+        </div>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md border-border bg-card">
-        <CardHeader className="items-center text-center">
-          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-            <MessageSquare className="h-6 w-6 text-primary" />
-          </div>
-          <CardTitle className="text-xl text-foreground">Reset password</CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Enter your email and we&apos;ll send you a reset link
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleReset} className="flex flex-col gap-4">
-            {error && (
-              <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-                {error}
-              </div>
-            )}
+    <AuthShell>
+      <h2 className="mb-1 text-2xl font-semibold text-white">Reset password</h2>
+      <p className="mb-6 text-[13px] text-white/40">Enter your email and we&apos;ll send you a reset link.</p>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email" className="text-muted-foreground">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20"
-              />
-            </div>
+      <form onSubmit={handleReset} className="space-y-4">
+        {error ? <AuthError>{error}</AuthError> : null}
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="mt-2 h-10 w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {loading ? "Sending..." : "Send reset link"}
-            </Button>
-          </form>
+        <div>
+          <label className="mb-1.5 block text-[12px] font-medium text-white/50">Email</label>
+          <AuthField
+            icon={Mail}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+            required
+            autoComplete="email"
+          />
+        </div>
 
-          <Link
-            href="/login"
-            className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to sign in
-          </Link>
-        </CardContent>
-      </Card>
-    </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="ad-cta flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-[14px] font-semibold disabled:opacity-60"
+        >
+          {loading ? (
+            "Sending…"
+          ) : (
+            <>
+              Send reset link <ArrowRight className="size-3.5" strokeWidth={2.5} />
+            </>
+          )}
+        </button>
+      </form>
+
+      <Link
+        href="/login"
+        className="mt-5 flex items-center justify-center gap-1.5 text-[12px] font-medium text-white/40 transition-colors hover:text-white/70"
+      >
+        <ArrowLeft className="size-3.5" />
+        Back to sign in
+      </Link>
+    </AuthShell>
   );
 }

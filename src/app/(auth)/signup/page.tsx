@@ -3,21 +3,11 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { User, Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { MessageSquare, CheckCircle, UsersRound } from "lucide-react";
+import { AuthShell, AuthField, AuthError } from "../auth-ui";
 
-// `useSearchParams` opts the component out of static prerendering
-// unless wrapped in Suspense — same pattern as /login.
+// `useSearchParams` opts out of static prerendering unless wrapped in Suspense.
 export default function SignupPage() {
   return (
     <Suspense fallback={null}>
@@ -28,17 +18,14 @@ export default function SignupPage() {
 
 function SignupPageInner() {
   const searchParams = useSearchParams();
-  // When the user lands here from `/join/<token>` we carry the
-  // invite token in the query so it survives the signup → email
-  // verification → redirect round-trip. `emailRedirectTo` below
-  // points back at /join/<token> so the user lands on the redeem
-  // step after verifying instead of being dropped on /dashboard.
+  // Carried through the signup → email verification → redirect round-trip.
   const inviteToken = searchParams.get("invite");
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -52,18 +39,12 @@ function SignupPageInner() {
       setError("Passwords do not match");
       return;
     }
-
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
 
     setLoading(true);
-
-    // If we have an invite token, point Supabase's verification
-    // email back at the join page so the user can accept after
-    // verifying. Without a token, Supabase uses its default
-    // redirect (the app root).
     const emailRedirectTo = inviteToken
       ? `${window.location.origin}/join/${encodeURIComponent(inviteToken)}`
       : undefined;
@@ -72,9 +53,7 @@ function SignupPageInner() {
       email,
       password,
       options: {
-        data: {
-          full_name: fullName,
-        },
+        data: { full_name: fullName },
         ...(emailRedirectTo ? { emailRedirectTo } : {}),
       },
     });
@@ -84,161 +63,131 @@ function SignupPageInner() {
       setLoading(false);
       return;
     }
-
     setSuccess(true);
     setLoading(false);
   };
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <Card className="w-full max-w-md border-border bg-card">
-          <CardHeader className="items-center text-center">
-            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-              <CheckCircle className="h-6 w-6 text-primary" />
-            </div>
-            <CardTitle className="text-xl text-foreground">
-              Check your email
-            </CardTitle>
-            <CardDescription className="text-muted-foreground">
-              We&apos;ve sent a confirmation link to{" "}
-              <span className="text-foreground">{email}</span>. Please check your
-              inbox and click the link to verify your account.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link
-              href={
-                inviteToken
-                  ? `/login?invite=${encodeURIComponent(inviteToken)}`
-                  : "/login"
-              }
-            >
-              <Button
-                variant="outline"
-                className="w-full border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                Back to sign in
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      <AuthShell>
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl border border-primary/10 bg-primary/5">
+            <CheckCircle className="size-6 text-primary/60" />
+          </div>
+          <h2 className="mb-1 text-2xl font-semibold text-white">Check your email</h2>
+          <p className="mb-6 text-[13px] leading-relaxed text-white/40">
+            We&apos;ve sent a confirmation link to <span className="text-white/70">{email}</span>. Click it to verify
+            your account.
+          </p>
+          <Link
+            href={inviteToken ? `/login?invite=${encodeURIComponent(inviteToken)}` : "/login"}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-5 py-3 text-[13px] font-medium text-white/70 transition-all hover:border-white/[0.12] hover:bg-white/[0.06]"
+          >
+            Back to sign in
+          </Link>
+        </div>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md border-border bg-card">
-        <CardHeader className="items-center text-center">
-          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-            {inviteToken ? (
-              <UsersRound className="h-6 w-6 text-primary" />
-            ) : (
-              <MessageSquare className="h-6 w-6 text-primary" />
-            )}
-          </div>
-          <CardTitle className="text-xl text-foreground">
-            {inviteToken ? "Create account & join" : "Create account"}
-          </CardTitle>
-          <CardDescription className="text-muted-foreground">
-            {inviteToken
-              ? "Verify your email, then accept the invitation to join your team."
-              : "Get started with Genalot"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignup} className="flex flex-col gap-4">
-            {error && (
-              <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-                {error}
-              </div>
-            )}
+    <AuthShell mode="signup">
+      <h2 className="mb-1 text-2xl font-semibold text-white">
+        {inviteToken ? "Create account & join" : "Create your account"}
+      </h2>
+      <p className="mb-6 text-[13px] text-white/40">
+        {inviteToken ? "Verify your email, then accept the invitation to join your team." : "Start creating in seconds."}
+      </p>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="fullName" className="text-muted-foreground">
-                Full name
-              </Label>
-              <Input
-                id="fullName"
-                type="text"
-                placeholder="John Doe"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-                className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20"
-              />
-            </div>
+      <form onSubmit={handleSignup} className="space-y-4">
+        {error ? <AuthError>{error}</AuthError> : null}
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email" className="text-muted-foreground">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20"
-              />
-            </div>
+        <div>
+          <label className="mb-1.5 block text-[12px] font-medium text-white/50">Full name</label>
+          <AuthField
+            icon={User}
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Jane Doe"
+            required
+            autoComplete="name"
+          />
+        </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="password" className="text-muted-foreground">
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="At least 6 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20"
-              />
-            </div>
+        <div>
+          <label className="mb-1.5 block text-[12px] font-medium text-white/50">Email</label>
+          <AuthField
+            icon={Mail}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+            required
+            autoComplete="email"
+          />
+        </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="confirmPassword" className="text-muted-foreground">
-                Confirm password
-              </Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Repeat your password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20"
-              />
-            </div>
+        <div>
+          <label className="mb-1.5 block text-[12px] font-medium text-white/50">Password</label>
+          <AuthField
+            icon={Lock}
+            type={showPass ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="At least 6 characters"
+            required
+            autoComplete="new-password"
+            rightSlot={
+              <button
+                type="button"
+                onClick={() => setShowPass((v) => !v)}
+                aria-label={showPass ? "Hide password" : "Show password"}
+                className="absolute right-3.5 text-white/20 transition-colors hover:text-white/40"
+              >
+                {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            }
+          />
+        </div>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="mt-2 h-10 w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {loading ? "Creating account..." : "Create account"}
-            </Button>
-          </form>
+        <div>
+          <label className="mb-1.5 block text-[12px] font-medium text-white/50">Confirm password</label>
+          <AuthField
+            icon={Lock}
+            type={showPass ? "text" : "password"}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Repeat your password"
+            required
+            autoComplete="new-password"
+          />
+        </div>
 
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link
-              href={
-                inviteToken
-                  ? `/login?invite=${encodeURIComponent(inviteToken)}`
-                  : "/login"
-              }
-              className="text-primary hover:text-primary/80"
-            >
-              Sign in
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="ad-cta flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-[14px] font-semibold disabled:opacity-60"
+        >
+          {loading ? (
+            "Creating account…"
+          ) : (
+            <>
+              Create account <ArrowRight className="size-3.5" strokeWidth={2.5} />
+            </>
+          )}
+        </button>
+      </form>
+
+      <p className="mt-5 text-center text-[12px] text-white/30">
+        Already have an account?{" "}
+        <Link
+          href={inviteToken ? `/login?invite=${encodeURIComponent(inviteToken)}` : "/login"}
+          className="font-medium text-primary/60 transition-colors hover:text-primary"
+        >
+          Log in
+        </Link>
+      </p>
+    </AuthShell>
   );
 }
