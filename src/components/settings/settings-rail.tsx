@@ -50,7 +50,7 @@ export function SettingsRail({
       className={cn(
         'flex gap-1 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         'border-b border-border',
-        'lg:sticky lg:top-0 lg:flex-col lg:overflow-visible lg:border-b-0 lg:pb-0',
+        'lg:glass-panel lg:sticky lg:top-0 lg:flex-col lg:gap-0.5 lg:rounded-2xl lg:border-b-0 lg:border lg:border-white/[0.07] lg:p-2 lg:pb-2',
       )}
     >
       {RAIL_GROUPS.map(({ label, group }) => {
@@ -79,11 +79,11 @@ export function SettingsRail({
                   onClick={() => onSelect(s)}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium whitespace-nowrap transition-colors',
+                    'flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium whitespace-nowrap transition-all',
                     'lg:w-full',
                     isActive
-                      ? 'bg-primary-soft text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-white/50 hover:bg-white/[0.04] hover:text-white/80',
                   )}
                 >
                   <Icon className="size-4 shrink-0" />

@@ -51,18 +51,18 @@ export default function SettingsPage() {
   };
 
   return (
-    <div>
+    <div className="mx-auto max-w-[1100px]">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+        <h1 className="font-heading text-3xl font-semibold text-foreground">
           Settings
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-[13px] text-white/40">
           Everything in one place — your account and your workspace. Pick a
           section to manage it.
         </p>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[236px_minmax(0,1fr)] lg:items-start">
+      <div className="mt-8 grid gap-6 lg:grid-cols-[236px_minmax(0,1fr)] lg:items-start">
         <SettingsRail active={section} onSelect={go} hints={hints} />
         <div className="min-w-0">{panel[section]}</div>
       </div>
