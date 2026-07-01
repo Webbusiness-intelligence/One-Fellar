@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { requireRole, toErrorResponse } from "@/lib/auth/account";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { isStudioModel } from "@/lib/ai-ads/chat-models";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
       soulIds?: string[];
       format?: string;
       mood?: string;
+      model?: string;
       autoCaption?: boolean;
     };
     const prompt = String(b.prompt ?? "").trim().slice(0, 1000);
@@ -66,6 +68,7 @@ export async function POST(req: Request) {
         soul_ids: Array.isArray(b.soulIds) ? b.soulIds.filter((s) => typeof s === "string").slice(0, 4) : [],
         format: ["1:1", "9:16", "4:5", "16:9"].includes(String(b.format)) ? String(b.format) : "1:1",
         mood: String(b.mood ?? "auto").slice(0, 40),
+        model: isStudioModel(String(b.model)) ? String(b.model) : "auto",
         auto_caption: b.autoCaption === true,
       })
       .select("*")

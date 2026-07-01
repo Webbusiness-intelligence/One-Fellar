@@ -16,6 +16,7 @@ import { planTurn } from "@/lib/ai-ads/agent";
 import { FORMAT_IDS } from "@/lib/ai-ads/generate-image";
 import { chatCredits, planLimits, clampQuality } from "@/lib/ai-ads/cost";
 import { directImage } from "@/lib/ai-ads/image-director";
+import { isStudioModel, modelSupportsRefs, type StudioModelId } from "@/lib/ai-ads/chat-models";
 import { resolveSkill } from "@/lib/ai-ads/resolve-skill";
 import { skillAddendum } from "@/lib/ai-ads/skills";
 
@@ -88,6 +89,9 @@ export async function POST(req: Request) {
     // the realism playbook; off = the user's raw prompt (good for graphics/illustration).
     const realism = String(form.get("realism") ?? "true") !== "false";
     const mood = String(form.get("mood") ?? "auto").slice(0, 40);
+    // Optional model override from the composer's picker (blank = auto-route).
+    const modelRaw = String(form.get("model") ?? "").trim();
+    const pickedModel: StudioModelId | null = isStudioModel(modelRaw) ? modelRaw : null;
     const skillId = String(form.get("skillId") ?? "").trim() || null;
     const enhancedPrompt = String(form.get("enhancedPrompt") ?? "").trim();
     const anyFile =
@@ -317,7 +321,6 @@ export async function POST(req: Request) {
       refs.some((r) => r.role === "logo");
 
     let usedPrompt = decision.prompt;
-    let genModel: string = decision.model;
     let failed = false;
     try {
       if (engine === "gpt") {
@@ -325,7 +328,6 @@ export async function POST(req: Request) {
         // prompt (no text); only builds a magazine-style text/poster layout when
         // wantsText. References are passed directly (like ChatGPT) — subject kept
         // accurate, reference as style inspiration. num_images returns N in one call.
-        genModel = "gpt-image-1.5";
         const gptQuality = quality === "standard" ? "low" : quality === "hd" ? "medium" : "high";
         const guide = refs.length
           ? " " +
@@ -390,14 +392,14 @@ export async function POST(req: Request) {
               ? `${conceptForGpt}${guide}${safeMargins}`
               : `${conceptBase}.${guide} Render a single, clean, photorealistic image of exactly this. Do NOT add any text, headline, caption, logo, watermark, label, border, UI or graphic-design overlay — produce a pure image, not a poster or ad.${safeMargins}`;
         const n = Math.min(variations, 8);
-        // Use GPT Image 2 (the top model) when composing @-referenced Soul IDs — far
-        // stronger multi-subject adherence — OR when the user picks Best quality, so a
-        // plain prompt at Best gets the most realistic skin/detail the ladder offers.
-        const gptModel =
-          refs.some((r) => r.role === "soul") || quality === "best"
-            ? ("gpt-image-2" as const)
-            : undefined;
-        if (gptModel) genModel = gptModel;
+        // Model: the composer's pick wins; otherwise auto — GPT Image 2 for @-referenced
+        // Soul IDs (far stronger multi-subject adherence) or Best quality, else 1.5. A
+        // prompt-only pick is bumped to GPT Image 2 when references are attached so they
+        // aren't silently dropped.
+        const autoModel: StudioModelId =
+          refs.some((r) => r.role === "soul") || quality === "best" ? "gpt-image-2" : "gpt-image-1.5";
+        let chosenModel: StudioModelId = pickedModel ?? autoModel;
+        if (refs.length && !modelSupportsRefs(chosenModel)) chosenModel = "gpt-image-2";
         // === ASYNC: the reasoning is done; enqueue the resolved render for the worker
         // (no 1–3 min held request) and return a pending assistant message. The worker
         // (worker/run-image, resolved mode) fills in this message when it finishes. ===
@@ -409,19 +411,19 @@ export async function POST(req: Request) {
             role: "assistant",
             text: "Generating…",
             asset_ids: [],
-            metadata: { pending: true, model: gptModel ?? genModel, aspect, suggestions: plan.suggestions },
+            metadata: { pending: true, model: chosenModel, aspect, suggestions: plan.suggestions },
           })
           .select("id")
           .single();
         const assistantMsgId = pending!.id as string;
-        const est = chatCredits({ variations: n, quality, isEdit: isEditTurn, engine: "gpt" });
+        const est = chatCredits({ variations: n, quality, isEdit: isEditTurn, engine: "gpt", model: chosenModel });
         const { data: jid, error: enqErr } = await admin.rpc("reserve_and_enqueue", {
           acct: ctx.accountId,
           creator: ctx.userId,
           est,
           payload: {
             resolvedPrompt: usedPrompt,
-            model: gptModel ?? "gpt-image-1.5",
+            model: chosenModel,
             quality,
             num: n,
             refUrls: refs.map((r) => r.url),

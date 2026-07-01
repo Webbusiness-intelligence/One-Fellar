@@ -2,7 +2,12 @@
 // the SAME directed pipeline as the Create flow, so output is on-brand, not random:
 //   swap @handles -> soul names · direct the prompt (mood + subjects) · generate with
 //   the reference images + Soul ID sheets (gpt-image-2) · optional AI caption · post.
-import { gptImageEdit, gptImageGenerate } from "@/lib/ai-ads/chat-models";
+import {
+  runStudioImage,
+  isStudioModel,
+  modelSupportsRefs,
+  type StudioModelId,
+} from "@/lib/ai-ads/chat-models";
 import { directImage } from "@/lib/ai-ads/image-director";
 import { postToSocial } from "@/lib/ayrshare";
 import { admin, BUCKET } from "./db";
@@ -18,6 +23,7 @@ interface Rule {
   soul_ids: string[] | null;
   format: string | null;
   mood: string | null;
+  model: string | null;
   auto_caption: boolean | null;
 }
 
@@ -48,7 +54,7 @@ async function autoCaption(brief: string): Promise<string> {
 export async function runAutopilotTick(): Promise<void> {
   const { data } = await admin
     .from("autopilot_rules")
-    .select("id, account_id, prompt, caption, platforms, interval_hours, ref_urls, soul_ids, format, mood, auto_caption")
+    .select("id, account_id, prompt, caption, platforms, interval_hours, ref_urls, soul_ids, format, mood, model, auto_caption")
     .eq("active", true)
     .lte("next_run_at", new Date().toISOString())
     .limit(10);
@@ -104,9 +110,23 @@ async function runRule(r: Rule): Promise<void> {
       subjects: subjects.length ? subjects : undefined,
     });
 
-    const urls = refs.length
-      ? await gptImageEdit({ prompt: directed, imageUrls: refs, format, quality: "medium", num: 1, model: "gpt-image-2" })
-      : await gptImageGenerate({ prompt: directed, format, quality: "medium", num: 1 });
+    // Model: the rule's pick, or auto (GPT Image 2 with refs, else 1.5). A prompt-only
+    // pick is bumped to GPT Image 2 when references are present so they aren't dropped.
+    let model: StudioModelId = isStudioModel(String(r.model))
+      ? (r.model as StudioModelId)
+      : refs.length
+        ? "gpt-image-2"
+        : "gpt-image-1.5";
+    if (refs.length && !modelSupportsRefs(model)) model = "gpt-image-2";
+
+    const urls = await runStudioImage({
+      model,
+      prompt: directed,
+      format,
+      imageUrls: refs,
+      quality: "medium",
+      num: 1,
+    });
     if (!urls.length) throw new Error("generation returned no image");
 
     if (r.auto_caption) caption = (await autoCaption(cleanPrompt)) || r.caption;

@@ -110,6 +110,19 @@ const LOOKS = [
   { v: "opulent luxury aesthetic", label: "Luxury" },
   { v: "bold vibrant colour-pop", label: "Vibrant" },
 ];
+// Image models offered in the composer. "auto" lets the route pick (GPT Image 2 for
+// Souls/Best, else 1.5). The prompt-only models ignore references/Souls.
+const MODELS = [
+  { v: "auto", label: "Model: Auto" },
+  { v: "gpt-image-2", label: "GPT Image 2 · best" },
+  { v: "gpt-image-1.5", label: "GPT Image 1.5" },
+  { v: "nano-banana-pro", label: "Nano Banana Pro" },
+  { v: "nano-banana", label: "Nano Banana" },
+  { v: "imagen4-ultra", label: "Imagen 4 Ultra" },
+  { v: "flux-pro", label: "Flux Pro 1.1" },
+  { v: "recraft", label: "Recraft V3" },
+  { v: "ideogram", label: "Ideogram V3" },
+];
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : "Something went wrong");
 
@@ -151,6 +164,7 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
   const [look, setLook] = useState("");
   const [realism, setRealism] = useState(true);
   const [mood, setMood] = useState("auto");
+  const [model, setModel] = useState("auto");
   const [skillId, setSkillId] = useState<string | null>(null);
   const [enhanced, setEnhanced] = useState<string | null>(null);
   useEffect(() => setEnhanced(null), [input]); // editing the prompt clears a stale enhanced version
@@ -283,6 +297,7 @@ export function ChatClient({ initialChats }: { initialChats: ChatSummary[] }) {
       if (lockedLook) fd.set("styleAssetId", lockedLook.id);
       if (localSouls.length) fd.set("soulIds", JSON.stringify(localSouls.map((s) => s.id)));
       if (!override && format !== "auto") fd.set("format", format);
+      if (!override && model !== "auto") fd.set("model", model);
       if (!override) {
         fd.set("realism", String(realism));
         if (realism) fd.set("mood", mood);
@@ -630,7 +645,13 @@ async function writeCopy(a: Asset) {
     !!styleFile ||
     !!logoFile ||
     !!lockedLook;
-  const estCredits = chatCredits({ variations, quality, isEdit: willEdit, engine: "gpt" });
+  const estCredits = chatCredits({
+    variations,
+    quality,
+    isEdit: willEdit,
+    engine: "gpt",
+    model: model === "auto" ? undefined : model,
+  });
 
   // Flatten the conversation into a generation feed (gallery, not a chat): each
   // assistant result becomes a group captioned by the prompt that made it.
@@ -1220,6 +1241,18 @@ async function writeCopy(a: Asset) {
                   <option value="moody">Moody</option>
                 </select>
               ) : null}
+              <select
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                title="Model — Auto picks GPT Image 2 for Souls/Best, else 1.5. Prompt-only models ignore references."
+                className="cursor-pointer appearance-none rounded-lg border border-white/10 bg-white/5 py-1.5 pl-2.5 pr-2 text-[12px] text-foreground/80 outline-none transition-colors hover:border-white/25"
+              >
+                {MODELS.map((m) => (
+                  <option key={m.v} value={m.v}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
               <SkillPicker value={skillId} onChange={setSkillId} kind="image" />
               <PromptEnhancer
                 getParams={() => ({

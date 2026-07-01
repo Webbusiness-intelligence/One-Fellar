@@ -34,6 +34,19 @@ const FORMATS = [
   { label: "Portrait 4:5", v: "4:5" },
 ];
 const MOODS = ["auto", "cinematic", "minimal", "vibrant", "luxury", "playful", "moody", "bright"];
+// Image models. "auto" = GPT Image 2 when refs/Souls are attached, else 1.5. The
+// prompt-only models ignore references/Souls.
+const MODELS = [
+  { v: "auto", label: "Model: auto" },
+  { v: "gpt-image-2", label: "GPT Image 2 · best" },
+  { v: "gpt-image-1.5", label: "GPT Image 1.5" },
+  { v: "nano-banana-pro", label: "Nano Banana Pro" },
+  { v: "nano-banana", label: "Nano Banana" },
+  { v: "imagen4-ultra", label: "Imagen 4 Ultra" },
+  { v: "flux-pro", label: "Flux Pro 1.1" },
+  { v: "recraft", label: "Recraft V3" },
+  { v: "ideogram", label: "Ideogram V3" },
+];
 const cadence = (h: number) =>
   h === 24 ? "Daily" : h === 72 ? "Every 3 days" : h === 168 ? "Weekly" : `Every ${Math.round(h / 24)}d`;
 
@@ -51,6 +64,7 @@ export function AutopilotPanel() {
   const [refUrls, setRefUrls] = useState<string[]>([]);
   const [format, setFormat] = useState("1:1");
   const [mood, setMood] = useState("auto");
+  const [model, setModel] = useState("auto");
   const [hours, setHours] = useState(168);
   const [startAt, setStartAt] = useState("");
   const [mention, setMention] = useState<{ query: string; caret: number } | null>(null);
@@ -123,7 +137,7 @@ export function AutopilotPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name, prompt, autoCaption, platforms, refUrls, soulIds: usedSouls.map((s) => s.id),
-          format, mood, intervalHours: hours, startAt: startAt || undefined,
+          format, mood, model, intervalHours: hours, startAt: startAt || undefined,
         }),
       });
       const j = await r.json();
@@ -262,6 +276,11 @@ export function AutopilotPanel() {
             <select value={format} onChange={(e) => setFormat(e.target.value)}
               className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-primary">
               {FORMATS.map((f) => <option key={f.v} value={f.v}>{f.label}</option>)}
+            </select>
+            <select value={model} onChange={(e) => setModel(e.target.value)}
+              title="Image model — prompt-only models ignore references/Souls (auto-bumped to GPT Image 2 when refs are attached)"
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-primary">
+              {MODELS.map((m) => <option key={m.v} value={m.v}>{m.label}</option>)}
             </select>
             <select value={hours} onChange={(e) => setHours(Number(e.target.value))}
               className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-primary">

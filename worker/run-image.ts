@@ -5,13 +5,16 @@
 //    { resolvedPrompt, model, quality, num, refUrls, aspect, chatId, assistantMsgId, summary }
 //    → just execute gpt-image with the decided prompt/model.
 // Either way: upload assets to the claimed job, finalize the chat message, return credits.
-import { gptImageEdit, gptImageGenerate } from "@/lib/ai-ads/chat-models";
+import {
+  runStudioImage,
+  isStudioModel,
+  modelSupportsRefs,
+  type StudioModelId,
+} from "@/lib/ai-ads/chat-models";
 import { directImage } from "@/lib/ai-ads/image-director";
-import { gptImageUsd, FAL, toCredits } from "@/lib/ai-ads/cost";
+import { studioModelUsd, FAL, toCredits } from "@/lib/ai-ads/cost";
 import { admin, BUCKET, insertAsset, resolveSouls, setProgress, type Job } from "./db";
 import sharp from "sharp";
-
-type GptModel = "gpt-image-1.5" | "gpt-image-2";
 
 type Brief = {
   // simple mode
@@ -64,7 +67,7 @@ export async function runImageJob(job: Job): Promise<number> {
   const resolved = typeof b.resolvedPrompt === "string" && b.resolvedPrompt.trim().length > 0;
 
   let usedPrompt: string;
-  let gptModel: GptModel;
+  let model: StudioModelId;
   let refUrls: string[];
   let num: number;
   let format: string;
@@ -73,7 +76,7 @@ export async function runImageJob(job: Job): Promise<number> {
 
   if (resolved) {
     usedPrompt = b.resolvedPrompt!; // already includes the ref-role guide from the route
-    gptModel = b.model === "gpt-image-2" ? "gpt-image-2" : "gpt-image-1.5";
+    model = isStudioModel(String(b.model)) ? (b.model as StudioModelId) : "gpt-image-1.5";
     refUrls = Array.isArray(b.refUrls) ? b.refUrls.filter((x) => typeof x === "string") : [];
     num = Math.min(Math.max(Number(b.num) || 1, 1), 8);
     format = String(b.aspect || b.format || "1:1");
@@ -95,22 +98,28 @@ export async function runImageJob(job: Job): Promise<number> {
     const subjects = chosen.length ? chosen.map((c) => ({ tag: c.name, desc: c.name, kind: c.kind })) : undefined;
     const concept = realism ? await directImage({ prompt: cleanPrompt, mood, aspect: format, subjects }) : cleanPrompt;
     usedPrompt = `${concept} No added text, captions, watermark or logo.`;
-    gptModel = chosen.length || quality === "best" ? "gpt-image-2" : "gpt-image-1.5";
+    model = isStudioModel(String(b.model))
+      ? (b.model as StudioModelId)
+      : chosen.length || quality === "best"
+        ? "gpt-image-2"
+        : "gpt-image-1.5";
   }
 
+  // References only work on ref-capable models — bump a prompt-only pick to GPT Image 2.
+  if (refUrls.length && !modelSupportsRefs(model)) model = "gpt-image-2";
+
   await setProgress(job.id, "rendering");
-  const urls = refUrls.length
-    ? await gptImageEdit({
-        prompt: resolved
-          ? usedPrompt
-          : `${usedPrompt} Feature the provided reference subject(s) together, keeping each accurate and recognisable.`,
-        imageUrls: refUrls,
-        format,
-        quality: gptQuality,
-        num,
-        model: gptModel,
-      })
-    : await gptImageGenerate({ prompt: usedPrompt, format, quality: gptQuality, num, model: gptModel });
+  const urls = await runStudioImage({
+    model,
+    prompt:
+      refUrls.length && !resolved
+        ? `${usedPrompt} Feature the provided reference subject(s) together, keeping each accurate and recognisable.`
+        : usedPrompt,
+    format,
+    imageUrls: refUrls,
+    quality: gptQuality,
+    num,
+  });
 
   const assetIds: string[] = [];
   for (let i = 0; i < urls.length; i++) {
@@ -122,18 +131,18 @@ export async function runImageJob(job: Job): Promise<number> {
       type: "image",
       storagePath: path,
       variationIndex: i,
-      metadata: { studio: "create", model: gptModel, prompt: metaPrompt, genPrompt: usedPrompt, aspect: format, quality },
+      metadata: { studio: "create", model, prompt: metaPrompt, genPrompt: usedPrompt, aspect: format, quality },
     });
     if (id) assetIds.push(id);
   }
   const made = assetIds.length;
-  console.log(`[worker] image ${gptModel} | ${gptQuality} | ${made}/${num} | "${metaPrompt.slice(0, 50)}"`);
+  console.log(`[worker] image ${model} | ${gptQuality} | ${made}/${num} | "${metaPrompt.slice(0, 50)}"`);
   if (!made) throw new Error("Image generation failed");
 
   // Finalize the chat thread: update the route's pending assistant message, or insert
   // one (the simple /jobs path doesn't pre-create one).
   const caption = made > 1 ? `Here are ${made} variations.` : "Here you go.";
-  const meta = { model: gptModel, aspect: format, quality, pending: false };
+  const meta = { model, aspect: format, quality, pending: false };
   if (b.assistantMsgId) {
     await admin
       .from("ad_chat_messages")
@@ -149,5 +158,5 @@ export async function runImageJob(job: Job): Promise<number> {
       metadata: meta,
     });
   }
-  return toCredits(num * gptImageUsd(quality) + (realismCharged ? FAL.geminiText : 0));
+  return toCredits(num * studioModelUsd(model, quality) + (realismCharged ? FAL.geminiText : 0));
 }

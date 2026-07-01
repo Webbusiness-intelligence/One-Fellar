@@ -38,28 +38,21 @@ export async function directImage(opts: {
     ? `\n\nSKILL — apply this with TOP PRIORITY (it defines the look, and OVERRIDES the photo-realism default above if it specifies a non-photographic style): ${opts.skill}`
     : "";
 
-  const instruction = `You are an award-winning photographer + colourist. Rewrite the USER PROMPT into ONE rich, production-ready PHOTOGRAPH prompt${
-    opts.aspect ? ` (aspect ${opts.aspect})` : ""
-  } for an image model.
+  const instruction = `You are an award-winning film director, DP and colourist.
 
-NEVER BREAK THESE:
-1. Keep the user's SUBJECT exactly. Do NOT invent new subjects, props or scene — only add photographic craft.
-2. If the user explicitly asks for a NON-photographic style (illustration, 3D render, cartoon, anime, watercolour, logo, vector, poster), HONOR that style and skip the photo-realism rules. Otherwise make it a genuine PHOTOGRAPH and include: ${REALISM}
-3. NSFW-safe: composed, neutral phrasing (no sensual adjectives) so the safety filter does not reject it.
-4. NO on-screen text, captions, watermark or logo unless the user explicitly asked.
+The USER PROMPT below is used VERBATIM as the subject of the image. You must NOT rephrase, restate, shorten, genericise, reorder or drop ANY of its words — keep brand/specific words (e.g. "our new energy drink") exactly.
 
-ADAPT to the scene + mood (${mood}); for a photograph, choose what best fits (and make variation #${
-    opts.variation ?? 0
-  } a distinct combination so multiple images differ):
-- Lighting setup (butterfly, Rembrandt, split, rim, window-soft, golden-hour, neon, low-key, high-key).
-- Colour grade + film stock + 60:30:10 colours (teal-orange, faded pastel, Kodak Vision3, Fuji Eterna…), slightly desaturated, never oversaturated.
-- Lens / focal length (24mm wide context, 35mm documentary-natural, 50mm neutral, 85mm f/1.8 beauty close-up bokeh).
-- Shot size + camera angle + composition (rule of thirds, leading lines, depth layering, negative space).
-- Time of day + practical atmosphere (haze, god-rays, lens flare, bokeh, halation — no CGI).${subjectsBlock}${skillBlock}
+Your ONLY job: write a DIRECTION BLOCK to append UNDER the prompt — the craft a director would specify, chosen to fit the FEEL of this exact prompt and the mood (${mood}). Cover, as relevant: camera + lens / focal length, shot size + angle + composition, lighting setup + time of day + practical atmosphere, colour grade + film stock + 60:30:10 palette, depth of field, and realism / texture. Match the MEDIUM the prompt implies — if it asks for illustration / 3D / cartoon / anime / logo / vector, give that medium's craft instead; otherwise make it a genuine PHOTOGRAPH and include: ${REALISM}
+
+RULES:
+- Direction ONLY — do NOT repeat or paraphrase the user's prompt in your output.
+- NSFW-safe, neutral phrasing. NO on-screen text, captions, watermark or logo unless the prompt asks.
+- Make variation #${opts.variation ?? 0} a distinct combination so multiple images differ.
+- One dense paragraph.${subjectsBlock}${skillBlock}
 
 USER PROMPT: "${opts.prompt}"
 
-Return STRICT JSON only: {"prompt":"the single enriched image prompt"}`;
+Return STRICT JSON only: {"direction":"the direction block only"}`;
 
   try {
     const res = await fetch(
@@ -81,8 +74,9 @@ Return STRICT JSON only: {"prompt":"the single enriched image prompt"}`;
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
     };
     const raw = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
-    const p = JSON.parse(raw) as Partial<{ prompt: string }>;
-    return p.prompt?.trim() || fallback(opts.prompt, opts.skill);
+    const p = JSON.parse(raw) as Partial<{ direction: string }>;
+    const dir = p.direction?.trim();
+    return dir ? `${opts.prompt}\n\n${dir}` : fallback(opts.prompt, opts.skill);
   } catch (e) {
     console.error("[ai-ads] directImage failed (non-fatal):", e);
     return fallback(opts.prompt, opts.skill);

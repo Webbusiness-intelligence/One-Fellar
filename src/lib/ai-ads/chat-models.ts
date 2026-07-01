@@ -194,3 +194,83 @@ export async function chatEdit(opts: {
     ),
   );
 }
+
+// ---- Unified studio model picker ------------------------------------------------
+// One id space + one runner so Create and Autopilot can offer the same "choose your
+// model" menu. `refs` = the model can use reference images / Soul IDs; the prompt-only
+// hero models ignore references, so callers should re-route (see modelSupportsRefs).
+export type StudioModelId =
+  | "gpt-image-2"
+  | "gpt-image-1.5"
+  | "nano-banana-pro"
+  | "nano-banana"
+  | "imagen4-ultra"
+  | "flux-pro"
+  | "recraft"
+  | "ideogram";
+
+export const STUDIO_MODELS: { id: StudioModelId; label: string; refs: boolean }[] = [
+  { id: "gpt-image-2", label: "GPT Image 2 — best, uses references", refs: true },
+  { id: "gpt-image-1.5", label: "GPT Image 1.5 — uses references", refs: true },
+  { id: "nano-banana-pro", label: "Nano Banana Pro — uses references", refs: true },
+  { id: "nano-banana", label: "Nano Banana — uses references", refs: true },
+  { id: "imagen4-ultra", label: "Imagen 4 Ultra — prompt only", refs: false },
+  { id: "flux-pro", label: "Flux Pro 1.1 — prompt only", refs: false },
+  { id: "recraft", label: "Recraft V3 — prompt only", refs: false },
+  { id: "ideogram", label: "Ideogram V3 — prompt only", refs: false },
+];
+
+const STUDIO_MODEL_IDS = STUDIO_MODELS.map((m) => m.id);
+export function isStudioModel(m: string): m is StudioModelId {
+  return (STUDIO_MODEL_IDS as string[]).includes(m);
+}
+export function modelSupportsRefs(m: string): boolean {
+  return STUDIO_MODELS.find((x) => x.id === m)?.refs ?? false;
+}
+
+// Run ANY studio model through one signature. GPT-image handles `num` natively; the
+// others are run N times in parallel. References are passed to the ref-capable
+// models (GPT-image + Nano Banana edit endpoints) and ignored by the prompt-only ones.
+export async function runStudioImage(opts: {
+  model: StudioModelId;
+  prompt: string;
+  format: string;
+  imageUrls?: string[];
+  quality?: "low" | "medium" | "high";
+  num?: number;
+}): Promise<string[]> {
+  const { model, prompt, format } = opts;
+  const refs = (opts.imageUrls ?? []).filter((u) => typeof u === "string" && u);
+  const num = Math.min(Math.max(opts.num ?? 1, 1), 8);
+  const quality = opts.quality ?? "high";
+
+  if (model === "gpt-image-2" || model === "gpt-image-1.5") {
+    return refs.length
+      ? gptImageEdit({ prompt, imageUrls: refs, format, quality, num, model })
+      : gptImageGenerate({ prompt, format, quality, num, model });
+  }
+
+  if (model === "nano-banana" || model === "nano-banana-pro") {
+    const pro = model === "nano-banana-pro";
+    const id = refs.length
+      ? pro
+        ? "fal-ai/nano-banana-pro/edit"
+        : "fal-ai/nano-banana/edit"
+      : pro
+        ? "fal-ai/nano-banana-pro"
+        : "fal-ai/nano-banana";
+    const body = refs.length
+      ? { prompt, image_urls: refs, aspect_ratio: format, num_images: 1 }
+      : { prompt, aspect_ratio: format, num_images: 1 };
+    const runs = await Promise.all(
+      Array.from({ length: num }, () => falRun<FalImages>(id, body, pro ? 90000 : 75000)),
+    );
+    return runs.flatMap(urls);
+  }
+
+  // Prompt-only hero models — run N in parallel (references not supported).
+  const runs = await Promise.all(
+    Array.from({ length: num }, () => chatGenerate({ prompt, format, model: model as ChatModelId })),
+  );
+  return runs.flat();
+}

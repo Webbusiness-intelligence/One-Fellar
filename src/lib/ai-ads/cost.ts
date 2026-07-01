@@ -80,6 +80,31 @@ export function gptImageUsd(quality: "standard" | "hd" | "best"): number {
       : FAL.gptImageHigh;
 }
 
+// Per-image fal price for a picked studio model (the composer/autopilot "choose your
+// model" menu). GPT-image is quality-tiered; the rest are flat per image. This is what
+// makes the credits CHARGED track the real cost of whichever model actually ran.
+export function studioModelUsd(model: string, quality: "standard" | "hd" | "best"): number {
+  switch (model) {
+    case "gpt-image-2":
+    case "gpt-image-1.5":
+      return gptImageUsd(quality);
+    case "nano-banana":
+      return FAL.nanoBanana;
+    case "nano-banana-pro":
+      return FAL.nanoBananaPro;
+    case "recraft":
+      return FAL.recraft;
+    case "ideogram":
+      return FAL.ideogram;
+    case "imagen4-ultra":
+      return FAL.imagen4Ultra;
+    case "flux-pro":
+      return FAL.fluxPro;
+    default:
+      return gptImageUsd(quality);
+  }
+}
+
 // ---- Per-action estimators (used by buttons AND routes, kept identical) ----
 
 export function chatCostUsd(o: {
@@ -90,8 +115,8 @@ export function chatCostUsd(o: {
   engine?: "nano" | "gpt";
 }): number {
   if (o.engine === "gpt") {
-    // GPT image returns num_images in one call; price scales per image by quality.
-    const per = gptImageUsd(o.quality);
+    // Price by the picked model (gpt-image quality-tiered, others flat per image).
+    const per = studioModelUsd(o.model ?? "gpt-image-1.5", o.quality);
     return Math.max(1, Math.min(o.variations, 8)) * per + FAL.geminiText;
   }
   if (o.isEdit) return FAL.nanoBananaEdit + FAL.geminiText; // edit / style / compose
@@ -168,6 +193,7 @@ const ASSET_USD: Record<string, number> = {
   seedream: 0.03,
   "gpt-image": 0.02,
   "gpt-image-1.5": 0.25,
+  "gpt-image-2": 0.25,
   video: 1.68,
   poster: 0.25,
   compare: 0.11,
