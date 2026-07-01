@@ -208,8 +208,8 @@ export function SocialClient() {
   }, [posts, month]);
 
   return (
-    <div className="mx-auto max-w-[1200px]">
-      <div className="mb-8 flex items-end justify-between gap-4">
+    <div className="mx-auto flex h-full max-w-[1200px] flex-col">
+      <div className="mb-6 flex shrink-0 items-end justify-between gap-4">
         <div>
           <h1 className="font-heading text-3xl font-semibold text-foreground">Social planner</h1>
           <p className="mt-1 text-[13px] text-white/40">Schedule your creations across your connected accounts.</p>
@@ -231,15 +231,15 @@ export function SocialClient() {
       </div>
 
       {accounts && accounts.length === 0 && (
-        <div className="glass-panel mb-5 rounded-xl border border-white/[0.07] p-3 text-xs text-white/50">
+        <div className="glass-panel mb-5 shrink-0 rounded-xl border border-white/[0.07] p-3 text-xs text-white/50">
           No accounts linked yet — connect Instagram / TikTok / Facebook in your Ayrshare dashboard, then refresh.
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
+      <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[1fr_320px]">
         {/* Calendar */}
-        <div className="glass-panel rounded-2xl border border-white/[0.07] p-5">
-          <div className="mb-5 flex items-center justify-between">
+        <div className="glass-panel flex min-h-0 flex-col rounded-2xl border border-white/[0.07] p-5">
+          <div className="mb-5 flex shrink-0 items-center justify-between">
             <div className="text-[16px] font-semibold text-foreground">
               {month.toLocaleString(undefined, { month: "long", year: "numeric" })}
             </div>
@@ -269,14 +269,14 @@ export function SocialClient() {
             </div>
           </div>
 
-          <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold tracking-wider text-white/30">
+          <div className="mb-2 grid shrink-0 grid-cols-7 gap-1 text-center text-[11px] font-semibold tracking-wider text-white/30">
             {WD.map((w) => (
               <div key={w} className="py-2">
                 {w}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-1">
             {cells.map((d, i) => {
               const k = dayKey(d);
               const ps = byDay[k] ?? [];
@@ -287,7 +287,7 @@ export function SocialClient() {
                   onMouseEnter={() => inMonth(d) && setHoveredDay(k)}
                   onMouseLeave={() => setHoveredDay(null)}
                   className={cn(
-                    "relative flex min-h-[90px] cursor-pointer flex-col rounded-xl border p-1.5 text-left transition-all",
+                    "relative flex min-h-0 cursor-pointer flex-col rounded-xl border p-1.5 text-left transition-all",
                     selDay === k
                       ? "border-primary/30 bg-primary/[0.04]"
                       : inMonth(d)
@@ -371,7 +371,7 @@ export function SocialClient() {
         </div>
 
         {/* Right column: day detail + month summary */}
-        <div className="space-y-4 lg:sticky lg:top-4">
+        <div className="flex min-h-0 flex-col gap-4">
           <div className="glass-panel rounded-2xl border border-white/[0.07] p-5">
             <div className="mb-4 flex items-center justify-between gap-2">
               <h3 className="text-[14px] font-semibold text-foreground">
@@ -387,11 +387,21 @@ export function SocialClient() {
               )}
             </div>
             {dayPosts.length ? (
-              <div className="space-y-3">
-                {dayPosts.map((p) => (
-                  <DayPostCard key={p.id} p={p} />
-                ))}
-              </div>
+              <>
+                <div className="space-y-3">
+                  {dayPosts.slice(0, 3).map((p) => (
+                    <DayPostCard key={p.id} p={p} />
+                  ))}
+                </div>
+                {dayPosts.length > 3 && (
+                  <Link
+                    href="/social/posts"
+                    className="mt-3 flex items-center justify-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] py-2.5 text-[12px] font-medium text-white/60 transition-all hover:border-primary/30 hover:text-primary"
+                  >
+                    View all posts <ArrowRight className="size-3" />
+                  </Link>
+                )}
+              </>
             ) : (
               <div className="py-8 text-center">
                 <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03]">
