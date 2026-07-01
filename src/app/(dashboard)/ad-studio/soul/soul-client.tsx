@@ -15,12 +15,16 @@ import {
   Box,
   Palette,
   Shapes,
+  Layers,
+  Image as ImageIcon,
+  AtSign,
   ChevronLeft,
   ChevronRight,
   X,
 } from "lucide-react";
 import { waitForJob } from "@/lib/ai-ads/wait-job";
 import { MentionTextarea } from "../mention-textarea";
+import { PillSelect } from "../pill-select";
 import { GeneratingPanel } from "../generating";
 
 export type SoulItem = {
@@ -40,6 +44,18 @@ const KINDS = [
   { id: "style", label: "Style", icon: Palette, desc: "a look or mood" },
   { id: "logo", label: "Logo / Graphic", icon: Shapes, desc: "a logo or flat graphic" },
 ] as const;
+
+const MODEL_OPTS = [
+  { v: "gpt-image-2", label: "GPT Image 2 · latest", icon: Sparkles },
+  { v: "1.5-high", label: "GPT Image 1.5 · Best", icon: ImageIcon },
+  { v: "1.5-medium", label: "GPT Image 1.5 · HD", icon: ImageIcon },
+  { v: "1.5-low", label: "GPT Image 1.5 · Standard", icon: ImageIcon },
+];
+const COUNT_OPTS = [
+  { v: "1", label: "1 variation", icon: ImageIcon },
+  { v: "2", label: "2 variations", icon: Copy },
+  { v: "4", label: "4 variations", icon: Layers },
+];
 
 const DRAFT_KEY = "genalot.soulDraft";
 
@@ -285,32 +301,33 @@ export function SoulClient({ initial }: { initial: SoulItem[] }) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <div className="mb-4">
-        <div className="text-lg font-semibold text-foreground">Soul ID</div>
-        <p className="text-sm text-muted-foreground">
+    <div className="mx-auto max-w-[1100px]">
+      <div className="mb-8">
+        <h1 className="mb-2 font-heading text-3xl font-semibold text-foreground">Soul ID</h1>
+        <p className="text-[13px] leading-relaxed text-white/40">
           Create reusable characters, products, locations and styles. Each gets an{" "}
-          <span className="text-foreground/80">@handle</span> you can drop into any Create chat to
-          keep it consistent.
+          <span className="font-medium text-primary/80">@handle</span> you can drop into any Create
+          chat to keep it consistent.
         </p>
       </div>
 
       {/* Create panel */}
-      <div className="mb-6 rounded-2xl border border-white/10 bg-card/50 p-3 backdrop-blur-sm">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="glass-panel mb-6 rounded-2xl border border-white/[0.07] p-6">
+        <div className="flex flex-wrap items-center gap-3">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Name (e.g. Aurora founder)"
-            className="h-9 min-w-[180px] flex-1 rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none focus:border-primary"
+            className="min-w-[200px] flex-1 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[14px] font-medium text-white outline-none transition-all duration-300 placeholder:text-white/20 focus:border-primary/30 focus:shadow-[0_0_20px_rgb(245_227_29_/_0.06)]"
           />
-          <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 font-mono text-[12px] text-primary">
-            {handlePreview}
-          </span>
+          <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-primary">
+            <AtSign className="size-3.5" strokeWidth={2} />
+            <span className="font-mono text-[13px] font-semibold">{handlePreview.replace(/^@/, "")}</span>
+          </div>
         </div>
 
         {/* Kind pills */}
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-5 flex flex-wrap gap-1.5">
           {KINDS.map((k) => {
             const Icon = k.icon;
             const on = kind === k.id;
@@ -319,13 +336,13 @@ export function SoulClient({ initial }: { initial: SoulItem[] }) {
                 key={k.id}
                 type="button"
                 onClick={() => setKind(k.id)}
-                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] transition-colors ${
+                className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-medium transition-all ${
                   on
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-white/10 bg-white/5 text-foreground/80 hover:text-foreground"
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-white/[0.06] bg-white/[0.02] text-white/40 hover:border-white/10 hover:bg-white/[0.05] hover:text-white/60"
                 }`}
               >
-                <Icon className="size-3.5" /> {k.label}
+                <Icon className="size-3.5" strokeWidth={1.5} /> {k.label}
               </button>
             );
           })}
@@ -336,14 +353,14 @@ export function SoulClient({ initial }: { initial: SoulItem[] }) {
         </p>
 
         {/* Mode toggle */}
-        <div className="mt-3 flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 p-0.5 w-fit">
+        <div className="mt-4 flex w-fit items-center gap-0.5 rounded-xl border border-white/[0.06] bg-white/[0.03] p-0.5">
           {(["generate", "upload"] as const).map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setMode(m)}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-[12px] font-medium capitalize transition-colors ${
-                mode === m ? "bg-white/10 text-foreground" : "text-muted-foreground hover:text-foreground"
+              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-medium capitalize transition-all ${
+                mode === m ? "bg-primary/10 text-primary" : "text-white/40 hover:text-white/60"
               }`}
             >
               {m === "generate" ? <Sparkles className="size-3.5" /> : <Upload className="size-3.5" />}
@@ -370,8 +387,8 @@ export function SoulClient({ initial }: { initial: SoulItem[] }) {
           {mode === "generate" ? (
             <div className="relative">
               {atQuery !== null && refMatches.length > 0 ? (
-                <div className="absolute bottom-full left-0 z-20 mb-2 max-h-72 w-72 overflow-y-auto rounded-xl border border-border bg-popover p-1.5 shadow-xl">
-                  <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                <div className="dropdown-solid animate-fade-in-up absolute bottom-full left-0 z-20 mb-2 max-h-72 w-72 overflow-y-auto rounded-xl p-1.5">
+                  <div className="px-2 py-1 text-[11px] font-medium text-white/40">
                     Reference a Soul ID{atQuery ? ` matching “${atQuery}”` : ""}
                   </div>
                   {refMatches.map((s) => (
@@ -399,8 +416,8 @@ export function SoulClient({ initial }: { initial: SoulItem[] }) {
                 rows={2}
                 placeholder="Describe it in detail — appearance, materials, mood… use @ to reference a Soul ID"
                 handles={refHandles}
-                boxClassName="rounded-lg border border-white/10 bg-white/5 focus-within:border-primary"
-                fieldClassName="px-3 py-2 text-sm"
+                boxClassName="rounded-xl border border-white/[0.08] bg-white/[0.03] transition-all focus-within:border-primary/30 focus-within:shadow-[0_0_20px_rgb(245_227_29_/_0.06)]"
+                fieldClassName="px-4 py-3 text-sm"
               />
               {refs.length > 0 ? (
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -443,9 +460,9 @@ export function SoulClient({ initial }: { initial: SoulItem[] }) {
             <button
               type="button"
               onClick={() => fileInput.current?.click()}
-              className="flex h-9 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 text-[12px] text-foreground/80 transition-colors hover:text-foreground"
+              className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[12px] font-medium text-white/55 transition-all hover:border-white/10 hover:bg-white/[0.06] hover:text-white/80"
             >
-              <Plus className="size-4" />
+              <Plus className="size-3.5" strokeWidth={1.5} />
               {mode === "upload" ? "Choose image" : "Reference image"}
             </button>
             {file ? (
@@ -460,29 +477,24 @@ export function SoulClient({ initial }: { initial: SoulItem[] }) {
             ) : null}
 
             {mode === "generate" ? (
-              <select
+              <PillSelect
                 value={modelSel}
-                onChange={(e) => setModelSel(e.target.value)}
+                onChange={setModelSel}
                 title="GPT image model & quality"
-                className="cursor-pointer appearance-none rounded-lg border border-white/10 bg-white/5 py-1.5 pl-2.5 pr-2 text-[12px] text-foreground/80 outline-none transition-colors hover:border-white/25"
-              >
-                <option value="gpt-image-2">GPT Image 2 · latest</option>
-                <option value="1.5-high">GPT Image 1.5 · Best</option>
-                <option value="1.5-medium">GPT Image 1.5 · HD</option>
-                <option value="1.5-low">GPT Image 1.5 · Standard</option>
-              </select>
+                active={modelSel !== "gpt-image-2"}
+                icon={Sparkles}
+                options={MODEL_OPTS}
+              />
             ) : null}
             {mode === "generate" ? (
-              <select
-                value={count}
-                onChange={(e) => setCount(Number(e.target.value))}
+              <PillSelect
+                value={String(count)}
+                onChange={(v) => setCount(Number(v))}
                 title="How many variations to generate (then pick your favourite)"
-                className="cursor-pointer appearance-none rounded-lg border border-white/10 bg-white/5 py-1.5 pl-2.5 pr-2 text-[12px] text-foreground/80 outline-none transition-colors hover:border-white/25"
-              >
-                <option value={1}>1 variation</option>
-                <option value={2}>2 variations</option>
-                <option value={4}>4 variations</option>
-              </select>
+                active={count > 1}
+                icon={ImageIcon}
+                options={COUNT_OPTS}
+              />
             ) : null}
             <button
               type="button"
@@ -567,12 +579,13 @@ export function SoulClient({ initial }: { initial: SoulItem[] }) {
 
       {/* Library */}
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-16 text-center">
-          <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-primary/10">
-            <Sparkles className="size-6 text-primary" strokeWidth={2} />
+        <div className="glass-panel flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/[0.08] p-12 text-center">
+          <div className="mb-4 flex size-14 items-center justify-center rounded-2xl border border-primary/10 bg-primary/5">
+            <Sparkles className="size-6 text-primary/40" strokeWidth={1} />
           </div>
-          <p className="text-sm text-muted-foreground">
-            No Soul IDs yet — create your first character, product or location above.
+          <p className="mb-1 text-[14px] text-white/30">No Soul IDs yet</p>
+          <p className="text-[12px] text-white/20">
+            Create your first character, product or location above.
           </p>
         </div>
       ) : (
