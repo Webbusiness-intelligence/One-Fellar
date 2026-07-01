@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Clock, Calendar, ArrowRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { ScheduleDialog } from "./schedule-dialog";
@@ -18,7 +18,6 @@ interface Post {
   created_at: string;
 }
 
-const title = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
@@ -95,26 +94,55 @@ function PostTooltip({ p }: { p: Post }) {
   );
 }
 
-function PostRow({ p }: { p: Post }) {
+// Rich post card for the day-detail sidebar (mirrors the Kimi planner).
+function DayPostCard({ p }: { p: Post }) {
+  const st = STATUS[p.status];
   const t = new Date(p.scheduled_at ?? p.created_at);
+  const time = t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const media = p.media_urls[0];
   return (
-    <li className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5 transition-colors hover:border-primary/15">
-      {p.media_urls[0] ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={p.media_urls[0]} alt="" className="h-11 w-11 shrink-0 rounded-md object-cover" />
-      ) : (
-        <div className="h-11 w-11 shrink-0 rounded-md bg-white/5" />
-      )}
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm text-foreground">{p.caption || "(no caption)"}</div>
-        <div className="mt-0.5 flex items-center gap-2 text-[11px] text-white/40">
-          <StatusDot s={p.status} />
-          <span className="capitalize">{p.status}</span>·<span>{p.platforms.map(title).join(", ")}</span>·
-          <span>{t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
+    <div className="group overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02] transition-all hover:border-primary/15">
+      {media ? (
+        <div className="relative h-24">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={media} alt="" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+          <div className="absolute left-2 top-2 flex items-center gap-1">
+            <span className={cn("h-1.5 w-1.5 rounded-full", st.dot)} />
+            <span className={cn("text-[9px] font-semibold", st.text)}>{st.label}</span>
+          </div>
+          <div className="absolute inset-x-2 bottom-2">
+            <p className="truncate text-[11px] font-medium text-white/80">{p.caption || "(no caption)"}</p>
+          </div>
         </div>
-        {p.error && <div className="mt-0.5 truncate text-[11px] text-destructive">{p.error}</div>}
+      ) : null}
+      <div className="p-2.5">
+        {!media && (
+          <>
+            <div className="mb-1.5 flex items-center gap-1.5">
+              <span className={cn("h-1.5 w-1.5 rounded-full", st.dot)} />
+              <span className={cn("text-[9px] font-semibold", st.text)}>{st.label}</span>
+            </div>
+            <p className="mb-2 line-clamp-2 text-[11px] leading-relaxed text-white/60">{p.caption || "(no caption)"}</p>
+          </>
+        )}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            {p.platforms.map((pl) => (
+              <span key={pl} className="flex h-5 w-5 items-center justify-center rounded-md bg-white/[0.04]">
+                <PlatformIcon id={pl} size={9} />
+              </span>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-white/25">
+            <Clock className="size-2.5" /> {time}
+          </div>
+        </div>
+        {p.error && (
+          <p className="mt-2 line-clamp-2 border-t border-white/[0.04] pt-2 text-[10px] text-destructive">{p.error}</p>
+        )}
       </div>
-    </li>
+    </div>
   );
 }
 
@@ -167,6 +195,17 @@ export function SocialClient() {
   const inMonth = (d: Date) => d.getMonth() === month.getMonth();
   const selDate = selDay ? (([y, m, d]) => new Date(y, m, d))(selDay.split("-").map(Number)) : null;
   const dayPosts = selDay ? byDay[selDay] ?? [] : [];
+  const monthStats = useMemo(() => {
+    const inM = posts.filter((p) => {
+      const d = new Date(p.scheduled_at ?? p.created_at);
+      return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
+    });
+    return {
+      scheduled: inM.filter((p) => p.status === "scheduled").length,
+      posted: inM.filter((p) => p.status === "posted").length,
+      failed: inM.filter((p) => p.status === "failed").length,
+    };
+  }, [posts, month]);
 
   return (
     <div className="mx-auto max-w-[1200px]">
@@ -323,31 +362,63 @@ export function SocialClient() {
           </div>
         </div>
 
-        {/* Selected day */}
-        <div className="glass-panel rounded-2xl border border-white/[0.07] p-5 lg:sticky lg:top-4">
-          <div className="mb-4 text-[14px] font-semibold text-foreground">
-            {selDate ? selDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) : "Pick a day"}
-          </div>
-          {dayPosts.length ? (
-            <ul className="space-y-3">
-              {dayPosts.map((p) => (
-                <PostRow key={p.id} p={p} />
-              ))}
-            </ul>
-          ) : (
-            <div className="py-8 text-center">
-              <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03]">
-                <Plus className="size-5 text-white/15" />
-              </div>
-              <p className="mb-1 text-[12px] text-white/30">Nothing here.</p>
-              <button
-                onClick={() => setDialog(true)}
-                className="text-[11px] font-medium text-primary/70 transition-colors hover:text-primary"
-              >
-                Add a post →
-              </button>
+        {/* Right column: day detail + month summary */}
+        <div className="space-y-4 lg:sticky lg:top-4">
+          <div className="glass-panel rounded-2xl border border-white/[0.07] p-5">
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <h3 className="text-[14px] font-semibold text-foreground">
+                {selDate ? selDate.toLocaleDateString(undefined, { month: "long", day: "numeric" }) : "Pick a day"}
+              </h3>
+              {selDate && (
+                <button
+                  onClick={() => setDialog(true)}
+                  className="shrink-0 text-[11px] font-medium text-primary/60 transition-colors hover:text-primary"
+                >
+                  Add a post <ArrowRight className="inline size-2.5" />
+                </button>
+              )}
             </div>
-          )}
+            {dayPosts.length ? (
+              <div className="space-y-3">
+                {dayPosts.map((p) => (
+                  <DayPostCard key={p.id} p={p} />
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center">
+                <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03]">
+                  <Calendar className="size-5 text-white/15" />
+                </div>
+                <p className="mb-1 text-[12px] text-white/30">Nothing here.</p>
+                <button
+                  onClick={() => setDialog(true)}
+                  className="text-[11px] font-medium text-primary/60 transition-colors hover:text-primary"
+                >
+                  Add a post <ArrowRight className="inline size-2.5" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* This month */}
+          <div className="glass-panel rounded-2xl border border-white/[0.07] p-5">
+            <h3 className="mb-3 text-[13px] font-semibold text-foreground">This month</h3>
+            <div className="space-y-2.5">
+              {[
+                { label: "Scheduled", count: monthStats.scheduled, color: "var(--primary)" },
+                { label: "Posted", count: monthStats.posted, color: "#34d399" },
+                { label: "Failed", count: monthStats.failed, color: "#f87171" },
+              ].map((s) => (
+                <div key={s.label} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+                    <span className="text-[12px] text-white/50">{s.label}</span>
+                  </div>
+                  <span className="text-[13px] font-semibold text-foreground">{s.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
