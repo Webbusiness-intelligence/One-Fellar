@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { ScheduleDialog } from "./schedule-dialog";
+import { AutopilotPanel } from "./autopilot-panel";
 
 interface Post {
   id: string;
@@ -220,6 +221,8 @@ export function SocialClient() {
           )}
         </div>
       </div>
+
+      <AutopilotPanel />
 
       <ScheduleDialog open={dialog} onClose={() => setDialog(false)} onDone={load} />
     </div>

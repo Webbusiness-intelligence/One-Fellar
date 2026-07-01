@@ -12,6 +12,7 @@ import { claimJob, settle, refund, requeueStale, type Job } from "./db";
 import { runImageJob } from "./run-image";
 import { runVideoJob } from "./run-video";
 import { runSoulJob } from "./run-soul";
+import { runAutopilotTick } from "./run-autopilot";
 
 const WORKER_ID = `w-${process.pid}-${randomUUID().slice(0, 8)}`;
 const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY) || 3;
@@ -68,11 +69,17 @@ async function main(): Promise<void> {
     if (n) console.log(`[worker] reaper requeued ${n} stale job(s)`);
   }, REAPER_MS);
 
+  // Autopilot: fire due recurring rules (generate → auto-post) every minute.
+  const autopilot = setInterval(() => {
+    void runAutopilotTick().catch((e) => console.error("[autopilot] tick:", (e as Error)?.message ?? e));
+  }, 60_000);
+
   const shutdown = async (sig: string) => {
     if (stopping) return;
     console.log(`[worker] ${sig} — draining ${running} in-flight job(s)…`);
     stopping = true;
     clearInterval(reaper);
+    clearInterval(autopilot);
     const deadline = Date.now() + 600_000; // wait up to 10 min for in-flight work
     while (running > 0 && Date.now() < deadline) await sleep(500);
     console.log("[worker] bye");
