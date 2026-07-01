@@ -37,6 +37,7 @@ export async function POST(req: Request) {
       refUrls?: string[];
       soulIds?: string[];
       format?: string;
+      mood?: string;
       autoCaption?: boolean;
     };
     const prompt = String(b.prompt ?? "").trim().slice(0, 1000);
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
         ref_urls: Array.isArray(b.refUrls) ? b.refUrls.filter((u) => typeof u === "string").slice(0, 4) : [],
         soul_ids: Array.isArray(b.soulIds) ? b.soulIds.filter((s) => typeof s === "string").slice(0, 4) : [],
         format: ["1:1", "9:16", "4:5", "16:9"].includes(String(b.format)) ? String(b.format) : "1:1",
+        mood: String(b.mood ?? "auto").slice(0, 40),
         auto_caption: b.autoCaption === true,
       })
       .select("*")

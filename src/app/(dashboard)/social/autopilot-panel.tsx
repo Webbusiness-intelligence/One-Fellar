@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, Play, Plus, Power, Sparkles, Trash2, Zap } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, Play, Plus, Power, Sparkles, Trash2, Upload, X, Zap } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -9,7 +9,6 @@ interface Rule {
   id: string;
   name: string;
   prompt: string;
-  caption: string;
   platforms: string[];
   interval_hours: number;
   next_run_at: string;
@@ -34,6 +33,7 @@ const FORMATS = [
   { label: "Story 9:16", v: "9:16" },
   { label: "Portrait 4:5", v: "4:5" },
 ];
+const MOODS = ["auto", "cinematic", "minimal", "vibrant", "luxury", "playful", "moody", "bright"];
 const cadence = (h: number) =>
   h === 24 ? "Daily" : h === 72 ? "Every 3 days" : h === 168 ? "Weekly" : `Every ${Math.round(h / 24)}d`;
 
@@ -46,17 +46,19 @@ export function AutopilotPanel() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("Autopilot");
   const [prompt, setPrompt] = useState("");
-  const [caption, setCaption] = useState("");
   const [autoCaption, setAutoCaption] = useState(true);
   const [platforms, setPlatforms] = useState<string[]>([]);
   const [refUrls, setRefUrls] = useState<string[]>([]);
-  const [soulIds, setSoulIds] = useState<string[]>([]);
   const [format, setFormat] = useState("1:1");
+  const [mood, setMood] = useState("auto");
   const [hours, setHours] = useState(168);
   const [startAt, setStartAt] = useState("");
+  const [mention, setMention] = useState<{ query: string; caret: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [running, setRunning] = useState<string | null>(null);
   const [err, setErr] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     const r = await fetch("/api/social/autopilot");
@@ -70,9 +72,45 @@ export function AutopilotPanel() {
     fetch("/api/ai-ads/soul").then((r) => r.json()).then((j) => setSouls(j.souls ?? [])).catch(() => {});
   }, []);
 
-  const inList = (arr: string[], v: string) => arr.includes(v);
-  const flip = (set: (u: (c: string[]) => string[]) => void, v: string) =>
+  const flip = <T,>(set: (u: (c: T[]) => T[]) => void, v: T) =>
     set((c) => (c.includes(v) ? c.filter((x) => x !== v) : [...c, v]));
+
+  // @-mention: detect the token being typed and offer souls.
+  function onPrompt(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const val = e.target.value;
+    setPrompt(val);
+    const caret = e.target.selectionStart ?? val.length;
+    const m = val.slice(0, caret).match(/@([a-zA-Z0-9_-]*)$/);
+    setMention(m ? { query: m[1].toLowerCase(), caret } : null);
+  }
+  const matches = mention
+    ? souls.filter((s) => s.handle.toLowerCase().includes(mention.query) || s.name.toLowerCase().includes(mention.query)).slice(0, 6)
+    : [];
+  function pickMention(s: Soul) {
+    if (!mention) return;
+    const before = prompt.slice(0, mention.caret).replace(/@([a-zA-Z0-9_-]*)$/, `@${s.handle} `);
+    setPrompt(before + prompt.slice(mention.caret));
+    setMention(null);
+  }
+  const usedSouls = souls.filter((s) => new RegExp(`@${s.handle}(?![a-zA-Z0-9_-])`, "i").test(prompt));
+
+  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setUploading(true);
+    setErr("");
+    try {
+      const fd = new FormData();
+      fd.set("file", f);
+      const r = await fetch("/api/social/upload", { method: "POST", body: fd });
+      const j = await r.json();
+      if (r.ok && j.url) setRefUrls((c) => [...c, j.url]);
+      else setErr(j.error || "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
 
   async function create() {
     setErr("");
@@ -84,14 +122,14 @@ export function AutopilotPanel() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name, prompt, caption, autoCaption, platforms, refUrls, soulIds, format,
-          intervalHours: hours, startAt: startAt || undefined,
+          name, prompt, autoCaption, platforms, refUrls, soulIds: usedSouls.map((s) => s.id),
+          format, mood, intervalHours: hours, startAt: startAt || undefined,
         }),
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Couldn't create.");
       setOpen(false);
-      setPrompt(""); setCaption(""); setRefUrls([]); setSoulIds([]); setStartAt("");
+      setPrompt(""); setRefUrls([]); setStartAt("");
       load();
     } catch (e) {
       setErr(String((e as Error).message));
@@ -100,11 +138,7 @@ export function AutopilotPanel() {
     }
   }
   async function patch(id: string, body: object) {
-    await fetch(`/api/social/autopilot/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    await fetch(`/api/social/autopilot/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     load();
   }
   async function runNow(id: string) {
@@ -123,156 +157,128 @@ export function AutopilotPanel() {
         <div className="flex items-center gap-2 text-base font-semibold text-foreground">
           <Zap className="h-4 w-4 text-primary" /> Autopilot
         </div>
-        <button
-          onClick={() => setOpen((o) => !o)}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-foreground hover:border-primary/40"
-        >
+        <button onClick={() => setOpen((o) => !o)} className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-foreground hover:border-primary/40">
           <Plus className="h-3.5 w-3.5" /> New
         </button>
       </div>
       <p className="mt-1 mb-3 text-xs text-muted-foreground">
-        Auto-generate an on-brand image and post it on a repeating schedule.
+        Lock in your brand — reference images, Soul IDs and mood — and it auto-generates on-brand posts on a schedule.
       </p>
 
       {open && (
         <div className="mb-4 space-y-3 rounded-xl border border-border bg-background p-3">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Name"
-            className="h-8 w-full rounded-md border border-input bg-background px-2.5 text-sm outline-none focus:border-primary"
-          />
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            rows={2}
-            placeholder="What to generate each time (e.g. my serum bottle in a fresh minimalist scene)"
-            className="w-full resize-none rounded-md border border-input bg-background p-2.5 text-sm outline-none focus:border-primary"
-          />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name"
+            className="h-8 w-full rounded-md border border-input bg-background px-2.5 text-sm outline-none focus:border-primary" />
 
-          {/* Reference images */}
+          {/* Prompt with @-mention */}
+          <div className="relative">
+            <textarea value={prompt} onChange={onPrompt} rows={2}
+              placeholder="What to make each time — type @ to feature a Soul ID (character, product, logo…)"
+              className="w-full resize-none rounded-md border border-input bg-background p-2.5 text-sm outline-none focus:border-primary" />
+            {matches.length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-border bg-background shadow-xl">
+                {matches.map((s) => (
+                  <button key={s.id} onClick={() => pickMention(s)}
+                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-muted">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={s.url} alt="" className="h-6 w-6 rounded object-cover" />
+                    <span className="font-medium text-foreground">@{s.handle}</span>
+                    <span className="text-muted-foreground">{s.name} · {s.kind}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {usedSouls.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+              Always featured:
+              {usedSouls.map((s) => (
+                <span key={s.id} className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-primary">@{s.handle}</span>
+              ))}
+            </div>
+          )}
+
+          {/* Reference images — upload or pick */}
           <div>
-            <div className="mb-1.5 text-xs font-medium text-muted-foreground">Reference image (keeps generations on-brand)</div>
-            {assets.length ? (
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">Reference images (keeps it on-brand)</span>
+              <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                className="inline-flex items-center gap-1 text-[11px] text-primary disabled:opacity-50">
+                {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} Upload
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" onChange={onUpload} className="hidden" />
+            </div>
+            {refUrls.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {refUrls.map((u) => (
+                  <div key={u} className="relative h-14 w-14 overflow-hidden rounded-md border border-primary">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={u} alt="" className="h-full w-full object-cover" />
+                    <button onClick={() => setRefUrls((c) => c.filter((x) => x !== u))}
+                      className="absolute right-0.5 top-0.5 rounded bg-background/80 p-0.5 text-muted-foreground hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {assets.length > 0 && (
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {assets.map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() => flip(setRefUrls, a.url)}
-                    className={cn(
-                      "h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 transition-colors",
-                      inList(refUrls, a.url) ? "border-primary" : "border-transparent hover:border-primary/40",
-                    )}
-                  >
+                  <button key={a.id} onClick={() => flip(setRefUrls, a.url)}
+                    className={cn("h-12 w-12 shrink-0 overflow-hidden rounded-md border-2",
+                      refUrls.includes(a.url) ? "border-primary" : "border-transparent hover:border-primary/40")}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={a.url} alt="" className="h-full w-full object-cover" />
                   </button>
                 ))}
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">Generate something first to use it as a reference.</p>
             )}
           </div>
-
-          {/* Soul IDs */}
-          {souls.length > 0 && (
-            <div>
-              <div className="mb-1.5 text-xs font-medium text-muted-foreground">Soul IDs to always feature</div>
-              <div className="flex flex-wrap gap-1.5">
-                {souls.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => flip(setSoulIds, s.id)}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-xs transition-colors",
-                      inList(soulIds, s.id) ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground",
-                    )}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={s.url} alt="" className="h-5 w-5 rounded-full object-cover" />@{s.handle}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Caption */}
-          <div>
-            <label className="mb-1.5 flex items-center gap-2 text-xs text-foreground">
-              <input type="checkbox" checked={autoCaption} onChange={(e) => setAutoCaption(e.target.checked)} />
-              <Sparkles className="h-3.5 w-3.5 text-primary" /> Auto-write a fresh caption each time
-            </label>
-            {!autoCaption && (
-              <input
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                placeholder="Caption"
-                className="h-8 w-full rounded-md border border-input bg-background px-2.5 text-sm outline-none focus:border-primary"
-              />
-            )}
-          </div>
+          <label className="flex items-center gap-2 text-xs text-foreground">
+            <input type="checkbox" checked={autoCaption} onChange={(e) => setAutoCaption(e.target.checked)} />
+            <Sparkles className="h-3.5 w-3.5 text-primary" /> Auto-write a fresh caption each time
+          </label>
 
           {/* Platforms */}
           <div className="flex flex-wrap gap-1.5">
-            {accounts.length ? (
-              accounts.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => flip(setPlatforms, p)}
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-xs",
-                    inList(platforms, p) ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground",
-                  )}
-                >
-                  {title(p)}
-                </button>
-              ))
-            ) : (
-              <span className="text-xs text-muted-foreground">Connect accounts first.</span>
-            )}
+            {accounts.length ? accounts.map((p) => (
+              <button key={p} onClick={() => flip(setPlatforms, p)}
+                className={cn("rounded-full border px-2.5 py-1 text-xs",
+                  platforms.includes(p) ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground")}>
+                {title(p)}
+              </button>
+            )) : <span className="text-xs text-muted-foreground">Connect accounts first.</span>}
           </div>
 
-          {/* Format + cadence + start */}
+          {/* Mood + format + cadence + start */}
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={format}
-              onChange={(e) => setFormat(e.target.value)}
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-primary"
-            >
-              {FORMATS.map((f) => (
-                <option key={f.v} value={f.v}>{f.label}</option>
-              ))}
+            <select value={mood} onChange={(e) => setMood(e.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-primary">
+              {MOODS.map((m) => <option key={m} value={m}>{m === "auto" ? "Mood: auto" : title(m)}</option>)}
             </select>
-            <select
-              value={hours}
-              onChange={(e) => setHours(Number(e.target.value))}
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-primary"
-            >
-              {FREQ.map((f) => (
-                <option key={f.hours} value={f.hours}>{f.label}</option>
-              ))}
+            <select value={format} onChange={(e) => setFormat(e.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-primary">
+              {FORMATS.map((f) => <option key={f.v} value={f.v}>{f.label}</option>)}
+            </select>
+            <select value={hours} onChange={(e) => setHours(Number(e.target.value))}
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-primary">
+              {FREQ.map((f) => <option key={f.hours} value={f.hours}>{f.label}</option>)}
             </select>
             <label className="text-xs text-muted-foreground">
               Start
-              <input
-                type="datetime-local"
-                value={startAt}
-                onChange={(e) => setStartAt(e.target.value)}
-                className="ml-1 rounded-md border border-input bg-background px-1.5 py-1 text-xs text-foreground outline-none focus:border-primary"
-              />
+              <input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)}
+                className="ml-1 rounded-md border border-input bg-background px-1.5 py-1 text-xs text-foreground outline-none focus:border-primary" />
             </label>
           </div>
 
           {err && <p className="text-xs text-destructive">{err}</p>}
           <div className="flex justify-end gap-2">
-            <button onClick={() => setOpen(false)} className="px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">
-              Cancel
-            </button>
-            <button
-              onClick={create}
-              disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
-            >
+            <button onClick={() => setOpen(false)} className="px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+            <button onClick={create} disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50">
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />} Create
             </button>
           </div>
@@ -286,24 +292,16 @@ export function AutopilotPanel() {
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-foreground">{r.name}</div>
                 <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                  {cadence(r.interval_hours)} · {r.platforms.map(title).join(", ")} · next{" "}
-                  {new Date(r.next_run_at).toLocaleString()}
+                  {cadence(r.interval_hours)} · {r.platforms.map(title).join(", ")} · next {new Date(r.next_run_at).toLocaleString()}
                 </div>
               </div>
-              <button
-                onClick={() => runNow(r.id)}
-                disabled={running === r.id}
-                title="Run now"
-                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-foreground hover:border-primary/40 disabled:opacity-50"
-              >
+              <button onClick={() => runNow(r.id)} disabled={running === r.id} title="Run now"
+                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-foreground hover:border-primary/40 disabled:opacity-50">
                 {running === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
                 {running === r.id ? "Queued" : "Run now"}
               </button>
-              <button
-                onClick={() => patch(r.id, { active: !r.active })}
-                title={r.active ? "Pause" : "Resume"}
-                className={cn("rounded-md p-1.5", r.active ? "text-primary" : "text-muted-foreground hover:text-foreground")}
-              >
+              <button onClick={() => patch(r.id, { active: !r.active })} title={r.active ? "Pause" : "Resume"}
+                className={cn("rounded-md p-1.5", r.active ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
                 <Power className="h-4 w-4" />
               </button>
               <button onClick={() => remove(r.id)} title="Delete" className="rounded-md p-1.5 text-muted-foreground hover:text-destructive">

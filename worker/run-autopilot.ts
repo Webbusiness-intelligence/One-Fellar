@@ -1,8 +1,9 @@
-// Autopilot runner — on each 60s tick (worker/index.ts) it fires every rule whose
-// next_run_at has passed: generate a fresh image (using the rule's reference images +
-// Soul IDs so it stays on-brand) → optionally auto-write a caption → post via Ayrshare
-// → reschedule. The @/lib import path works in the worker (tsx), like run-image/run-soul.
+// Autopilot runner — on each 60s tick (worker/index.ts) it fires every due rule using
+// the SAME directed pipeline as the Create flow, so output is on-brand, not random:
+//   swap @handles -> soul names · direct the prompt (mood + subjects) · generate with
+//   the reference images + Soul ID sheets (gpt-image-2) · optional AI caption · post.
 import { gptImageEdit, gptImageGenerate } from "@/lib/ai-ads/chat-models";
+import { directImage } from "@/lib/ai-ads/image-director";
 import { postToSocial } from "@/lib/ayrshare";
 import { admin, BUCKET } from "./db";
 
@@ -16,10 +17,10 @@ interface Rule {
   ref_urls: string[] | null;
   soul_ids: string[] | null;
   format: string | null;
+  mood: string | null;
   auto_caption: boolean | null;
 }
 
-// Fresh, varied caption per run (falls back to the rule's fixed caption on any error).
 async function autoCaption(brief: string): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return "";
@@ -31,13 +32,7 @@ async function autoCaption(brief: string): Promise<string> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [
-            {
-              parts: [
-                {
-                  text: `Write a short, engaging social-media caption (1–2 sentences plus a few relevant hashtags) for a post about: ${brief}. Return ONLY the caption text, no quotes.`,
-                },
-              ],
-            },
+            { parts: [{ text: `Write a short, engaging social-media caption (1-2 sentences plus a few relevant hashtags) for a post about: ${brief}. Return ONLY the caption text, no quotes.` }] },
           ],
         }),
       },
@@ -53,7 +48,7 @@ async function autoCaption(brief: string): Promise<string> {
 export async function runAutopilotTick(): Promise<void> {
   const { data } = await admin
     .from("autopilot_rules")
-    .select("id, account_id, prompt, caption, platforms, interval_hours, ref_urls, soul_ids, format, auto_caption")
+    .select("id, account_id, prompt, caption, platforms, interval_hours, ref_urls, soul_ids, format, mood, auto_caption")
     .eq("active", true)
     .lte("next_run_at", new Date().toISOString())
     .limit(10);
@@ -80,26 +75,41 @@ async function runRule(r: Rule): Promise<void> {
   let ayrshareId: string | undefined;
   let caption = r.caption;
   try {
-    // Reference images + Soul ID reference sheets keep every generation on-brand.
+    // Resolve Soul IDs → reference sheets + a handle→name map + director subjects.
     const refs = [...(r.ref_urls ?? [])];
+    const nameByHandle: Record<string, string> = {};
+    const subjects: { tag: string; desc: string; kind: string }[] = [];
     if (r.soul_ids?.length) {
       const { data } = await admin
         .from("ad_soul_ids")
-        .select("storage_path")
+        .select("handle, name, kind, storage_path")
         .in("id", r.soul_ids)
         .eq("account_id", r.account_id);
       for (const s of data ?? []) {
         refs.push(admin.storage.from(BUCKET).getPublicUrl(s.storage_path as string).data.publicUrl);
+        const handle = String(s.handle ?? "").toLowerCase();
+        const name = String(s.name ?? s.handle ?? "");
+        if (handle) nameByHandle[handle] = name;
+        subjects.push({ tag: name, desc: name, kind: String(s.kind ?? "") });
       }
     }
 
+    // @handle → soul name, then run the same director as Create (mood + subjects).
+    const cleanPrompt = r.prompt.replace(/@([a-zA-Z0-9_-]+)/g, (_, h: string) => nameByHandle[h.toLowerCase()] ?? h);
     const format = r.format || "1:1";
+    const directed = await directImage({
+      prompt: cleanPrompt,
+      mood: r.mood || "auto",
+      aspect: format,
+      subjects: subjects.length ? subjects : undefined,
+    });
+
     const urls = refs.length
-      ? await gptImageEdit({ prompt: r.prompt, imageUrls: refs, format, quality: "medium", num: 1, model: "gpt-image-2" })
-      : await gptImageGenerate({ prompt: r.prompt, format, quality: "medium", num: 1 });
+      ? await gptImageEdit({ prompt: directed, imageUrls: refs, format, quality: "medium", num: 1, model: "gpt-image-2" })
+      : await gptImageGenerate({ prompt: directed, format, quality: "medium", num: 1 });
     if (!urls.length) throw new Error("generation returned no image");
 
-    if (r.auto_caption) caption = (await autoCaption(r.prompt)) || r.caption;
+    if (r.auto_caption) caption = (await autoCaption(cleanPrompt)) || r.caption;
 
     const bytes = new Uint8Array(await (await fetch(urls[0])).arrayBuffer());
     const path = `outputs/${r.account_id}/autopilot/${r.id}/${Date.now()}.png`;
