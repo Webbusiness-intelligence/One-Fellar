@@ -13,11 +13,11 @@ import { directCinematic, directCuts, type Subject } from "@/lib/ai-ads/cinemati
 import { resolveSkill } from "@/lib/ai-ads/resolve-skill";
 import { skillAddendum } from "@/lib/ai-ads/skills";
 import { stitchClips } from "@/lib/ai-ads/video-stitch";
-import { VIDEO_ENGINE_SEC, FAL, toCredits } from "@/lib/ai-ads/cost";
+import { VIDEO_ENGINE_SEC, VIDEO_RES_MULT, FAL, toCredits } from "@/lib/ai-ads/cost";
 import { admin, pub, BUCKET, insertAsset, resolveSouls, setProgress, type Job } from "./db";
 
 const ENGINES: VideoEngine[] = ["kling-pro", "kling-turbo", "seedance-pro", "seedance-fast"];
-const RESOLUTIONS = ["480p", "720p", "1080p"];
+const RESOLUTIONS = ["480p", "720p", "1080p", "4k"];
 
 type Brief = {
   prompt?: string;
@@ -101,7 +101,9 @@ export async function runVideoJob(job: Job): Promise<number> {
   }
 
   const summary = cleanPrompt.slice(0, 80) || "Video";
-  const per = VIDEO_ENGINE_SEC[engine] ?? FAL.klingVideoSecAudio;
+  // Per-second rate × resolution multiplier (Seedance scales with pixels; Kling stays
+  // 720p → ×1). Keeps settlement in step with the reserved estimate for 4K/1080p.
+  const per = (VIDEO_ENGINE_SEC[engine] ?? FAL.klingVideoSecAudio) * (VIDEO_RES_MULT[resolution] ?? 1);
   let costUsd = 0; // accumulate actual fal spend
 
   const saveKeyframe = async (url: string): Promise<string | null> => {

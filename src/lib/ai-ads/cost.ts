@@ -167,10 +167,17 @@ export const VIDEO_ENGINE_SEC: Record<string, number> = {
   "seedance-pro": FAL.seedanceProSec,
   "seedance-fast": FAL.seedanceFastSec,
 };
-// Credits to render one scene: N takes × duration × engine/sec + a keyframe (gpt med).
-export function sceneCredits(o: { duration: number; takes: number; engine: string }): number {
+// Resolution scales video cost (Seedance is billed by pixels × frames; 720p is the
+// base rate). Kling ignores resolution → pass 720p (×1). 4K ≈ 5× 720p.
+export const VIDEO_RES_MULT: Record<string, number> = { "480p": 0.45, "720p": 1, "1080p": 2.25, "4k": 5 };
+
+// Credits to render one scene: N takes × duration × engine/sec × resolution + a
+// keyframe (gpt med). `resolution` defaults to 720p (×1) so existing callers are
+// unchanged.
+export function sceneCredits(o: { duration: number; takes: number; engine: string; resolution?: string }): number {
   const per = VIDEO_ENGINE_SEC[o.engine] ?? FAL.klingVideoSecAudio;
-  return toCredits(o.takes * o.duration * per + FAL.gptImageMedium);
+  const resMult = VIDEO_RES_MULT[(o.resolution ?? "720p").toLowerCase()] ?? 1;
+  return toCredits(o.takes * o.duration * per * resMult + FAL.gptImageMedium);
 }
 
 export const chatCredits = (o: Parameters<typeof chatCostUsd>[0]) => toCredits(chatCostUsd(o));
@@ -247,13 +254,13 @@ export const PACK_EXPIRY_DAYS = 90; // top-up credits expire (breakage improves 
 // (Platform owner: set your account's plan to 'studio' so you're not capped.) ----
 export interface PlanLimits {
   maxImageQuality: "standard" | "hd" | "best";
-  maxVideoResolution: "480p" | "720p" | "1080p";
+  maxVideoResolution: "480p" | "720p" | "1080p" | "4k";
   maxVariations: number;
   watermark: boolean;
 }
 export function planLimits(plan: string | null | undefined): PlanLimits {
   return plan && plan !== "free"
-    ? { maxImageQuality: "best", maxVideoResolution: "1080p", maxVariations: 8, watermark: false }
+    ? { maxImageQuality: "best", maxVideoResolution: "4k", maxVariations: 8, watermark: false }
     : { maxImageQuality: "standard", maxVideoResolution: "720p", maxVariations: 2, watermark: true };
 }
 

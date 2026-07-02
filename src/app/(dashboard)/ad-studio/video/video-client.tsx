@@ -51,6 +51,7 @@ const ENGINE_OPTS = [
 const RES_OPTS = [
   { v: "720p", label: "720p", icon: Monitor },
   { v: "1080p", label: "1080p", icon: Monitor },
+  { v: "4k", label: "4K", icon: Monitor },
 ];
 const COUNT_OPTS = [
   { v: "1", label: "1 variation", icon: Copy },
@@ -131,7 +132,7 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
   // Seedance is billed by pixels × frames, so resolution scales the cost (the base
   // rate is for 720p). Kling is flat per-second. Plus the GPT-Image-2 keyframe (~10cr)
   // per take, except Seedance reference-to-video (no keyframe).
-  const RES_MULT: Record<string, number> = { "480p": 0.45, "720p": 1, "1080p": 2.25 };
+  const RES_MULT: Record<string, number> = { "480p": 0.45, "720p": 1, "1080p": 2.25, "4k": 5 };
   const resMult = supportsRes ? RES_MULT[resolution] ?? 1 : 1;
   const usesReference = supportsRes && refs.length > 0;
   const perTake = engineSec * duration * resMult * 100 + (usesReference ? 0 : 10);

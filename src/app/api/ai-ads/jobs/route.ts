@@ -80,7 +80,7 @@ export async function POST(req: Request) {
 
       fmt = "9:16";
       brief = { prompt, engine, duration, format, resolution, audio, count, cinematic, mood, cuts, soulIds, skillId, enhancedPrompt, enhancedKeyframe, startImageUrl };
-      est = count * sceneCredits({ duration, takes: 1, engine });
+      est = count * sceneCredits({ duration, takes: 1, engine, resolution });
     } else if (kind === "soul") {
       const description = String(form.get("description") ?? "").trim().slice(0, 600);
       if (!description) return NextResponse.json({ error: "Describe what to create" }, { status: 400 });
