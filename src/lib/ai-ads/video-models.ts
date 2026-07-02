@@ -146,6 +146,42 @@ export async function seedanceReferenceToVideo(opts: {
   return out.video?.url ?? null;
 }
 
+// Seedance TEXT-to-video — no input image, so the subject is generated from the
+// prompt. On Ark this avoids Seedance's "real person" image block entirely (and still
+// renders native 4K). Falls back to fal text-to-video only on a genuine Ark error.
+export async function seedanceTextToVideo(opts: {
+  prompt: string;
+  duration: number;
+  resolution?: string;
+  audio?: boolean;
+  fast?: boolean;
+}): Promise<string | null> {
+  if (arkSeedanceEnabled()) {
+    try {
+      return await arkSeedanceVideo({
+        prompt: opts.prompt,
+        duration: opts.duration,
+        resolution: opts.resolution,
+        audio: opts.audio,
+        fast: opts.fast,
+      });
+    } catch (e) {
+      console.warn(`[ark] text-to-video failed → falling back to fal: ${(e as Error)?.message ?? e}`);
+    }
+  }
+  const out = await falQueue<VideoOut>(
+    opts.fast ? "bytedance/seedance-2.0/fast/text-to-video" : "bytedance/seedance-2.0/text-to-video",
+    {
+      prompt: opts.prompt,
+      duration: String(Math.min(Math.max(opts.duration, 4), 15)),
+      resolution: opts.resolution ?? "720p",
+      generate_audio: opts.audio !== false,
+    },
+    Q,
+  );
+  return out.video?.url ?? null;
+}
+
 // Dispatch a scene render to the chosen engine.
 export function renderSceneVideo(
   engine: VideoEngine,

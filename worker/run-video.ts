@@ -7,7 +7,13 @@ import { writeFile, readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { renderSceneVideo, seedanceReferenceToVideo, type VideoEngine } from "@/lib/ai-ads/video-models";
+import {
+  renderSceneVideo,
+  seedanceReferenceToVideo,
+  seedanceTextToVideo,
+  type VideoEngine,
+} from "@/lib/ai-ads/video-models";
+import { arkSeedanceEnabled } from "@/lib/ai-ads/ark-video";
 import { gptImageEdit, gptImageGenerate } from "@/lib/ai-ads/chat-models";
 import { directCinematic, directCuts, type Subject } from "@/lib/ai-ads/cinematic-director";
 import { resolveSkill } from "@/lib/ai-ads/resolve-skill";
@@ -133,8 +139,13 @@ export async function runVideoJob(job: Job): Promise<number> {
       ? b.enhancedKeyframe || `${cleanPrompt}. No added text, captions or watermark.`
       : shot?.keyframePrompt ?? `${cleanPrompt}. No added text, captions or watermark.`;
 
+    // On Ark, Seedance blocks animating a real-looking face from an INPUT image, so a
+    // plain prompt (no uploaded frame, no Soul refs) skips the gpt-image keyframe and
+    // renders TEXT-to-video instead — the subject is generated from the prompt.
+    const useT2V = arkSeedanceEnabled() && engine.startsWith("seedance") && !useReference && !b.startImageUrl;
+
     let startUrl: string | null = b.startImageUrl ?? null;
-    if (!useReference && !startUrl) {
+    if (!useReference && !useT2V && !startUrl) {
       await setProgress(job.id, `take ${variation + 1}: keyframe`);
       const out = soulUrls.length
         ? await gptImageEdit({
@@ -155,15 +166,23 @@ export async function runVideoJob(job: Job): Promise<number> {
     const run = (a: boolean) =>
       useReference
         ? seedanceReferenceToVideo({ imageUrls: soulUrls, prompt: clampPrompt(videoPrompt), duration, resolution, audio: a, bitrate })
-        : renderSceneVideo(engine, {
-            startImageUrl: startUrl as string,
-            prompt: clampI2V(videoPrompt),
-            negativePrompt,
-            duration,
-            resolution,
-            audio: a,
-            bitrate,
-          });
+        : useT2V
+          ? seedanceTextToVideo({
+              prompt: clampI2V(videoPrompt),
+              duration,
+              resolution,
+              audio: a,
+              fast: engine === "seedance-fast",
+            })
+          : renderSceneVideo(engine, {
+              startImageUrl: startUrl as string,
+              prompt: clampI2V(videoPrompt),
+              negativePrompt,
+              duration,
+              resolution,
+              audio: a,
+              bitrate,
+            });
     let vurl: string | null = null;
     try {
       vurl = await run(audio);
