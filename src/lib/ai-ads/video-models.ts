@@ -4,6 +4,7 @@
 //   seedance-pro / seedance-fast = ByteDance Seedance 2.0 (cinematic, auto-duration, audio)
 
 import { falQueue } from "./fal";
+import { arkSeedanceEnabled, arkSeedanceVideo } from "./ark-video";
 
 export type VideoEngine = "kling-pro" | "kling-turbo" | "seedance-pro" | "seedance-fast";
 
@@ -66,6 +67,18 @@ export async function seedanceImageToVideo(opts: {
   resolution?: string; // 480p | 720p | 1080p | 4k
   bitrate?: string; // standard | high
 }): Promise<string | null> {
+  // Ark-direct (opt-in) — cheaper than fal for the same model, incl. native 4K.
+  if (arkSeedanceEnabled()) {
+    return arkSeedanceVideo({
+      prompt: opts.prompt,
+      duration: opts.duration,
+      resolution: opts.resolution,
+      audio: opts.audio,
+      fast: opts.fast,
+      firstFrameUrl: opts.startImageUrl,
+      lastFrameUrl: opts.endImageUrl,
+    });
+  }
   const out = await falQueue<VideoOut>(
     opts.fast ? "bytedance/seedance-2.0/fast/image-to-video" : "bytedance/seedance-2.0/image-to-video",
     {
@@ -94,6 +107,17 @@ export async function seedanceReferenceToVideo(opts: {
   fast?: boolean;
   bitrate?: string; // standard | high
 }): Promise<string | null> {
+  // Ark-direct (opt-in) — cheaper than fal for the same model, incl. native 4K.
+  if (arkSeedanceEnabled()) {
+    return arkSeedanceVideo({
+      prompt: opts.prompt,
+      duration: opts.duration,
+      resolution: opts.resolution,
+      audio: opts.audio,
+      fast: opts.fast,
+      referenceUrls: opts.imageUrls,
+    });
+  }
   const out = await falQueue<VideoOut>(
     opts.fast
       ? "bytedance/seedance-2.0/fast/reference-to-video"
