@@ -68,16 +68,22 @@ export async function seedanceImageToVideo(opts: {
   bitrate?: string; // standard | high
 }): Promise<string | null> {
   // Ark-direct (opt-in) — cheaper than fal for the same model, incl. native 4K.
+  // Falls back to fal on any Ark error (e.g. Seedance's real-person content block,
+  // which fal doesn't enforce), so a clip always renders.
   if (arkSeedanceEnabled()) {
-    return arkSeedanceVideo({
-      prompt: opts.prompt,
-      duration: opts.duration,
-      resolution: opts.resolution,
-      audio: opts.audio,
-      fast: opts.fast,
-      firstFrameUrl: opts.startImageUrl,
-      lastFrameUrl: opts.endImageUrl,
-    });
+    try {
+      return await arkSeedanceVideo({
+        prompt: opts.prompt,
+        duration: opts.duration,
+        resolution: opts.resolution,
+        audio: opts.audio,
+        fast: opts.fast,
+        firstFrameUrl: opts.startImageUrl,
+        lastFrameUrl: opts.endImageUrl,
+      });
+    } catch (e) {
+      console.warn(`[ark] image-to-video failed → falling back to fal: ${(e as Error)?.message ?? e}`);
+    }
   }
   const out = await falQueue<VideoOut>(
     opts.fast ? "bytedance/seedance-2.0/fast/image-to-video" : "bytedance/seedance-2.0/image-to-video",
@@ -107,16 +113,21 @@ export async function seedanceReferenceToVideo(opts: {
   fast?: boolean;
   bitrate?: string; // standard | high
 }): Promise<string | null> {
-  // Ark-direct (opt-in) — cheaper than fal for the same model, incl. native 4K.
+  // Ark-direct (opt-in) — falls back to fal on any Ark error (e.g. Seedance's
+  // real-person content block), so a clip always renders.
   if (arkSeedanceEnabled()) {
-    return arkSeedanceVideo({
-      prompt: opts.prompt,
-      duration: opts.duration,
-      resolution: opts.resolution,
-      audio: opts.audio,
-      fast: opts.fast,
-      referenceUrls: opts.imageUrls,
-    });
+    try {
+      return await arkSeedanceVideo({
+        prompt: opts.prompt,
+        duration: opts.duration,
+        resolution: opts.resolution,
+        audio: opts.audio,
+        fast: opts.fast,
+        referenceUrls: opts.imageUrls,
+      });
+    } catch (e) {
+      console.warn(`[ark] reference-to-video failed → falling back to fal: ${(e as Error)?.message ?? e}`);
+    }
   }
   const out = await falQueue<VideoOut>(
     opts.fast
