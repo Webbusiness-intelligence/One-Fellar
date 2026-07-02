@@ -110,13 +110,14 @@ ADAPT the look to the scene + mood (${mood}); make take #${opts.variation ?? 0} 
 
 USER PROMPT: "${opts.prompt}"
 
-JSON SAFETY: inside every string value use ONLY single quotes ' — never the double-quote character " — and output strictly valid JSON (escape newlines).
-Return STRICT JSON only:
-{
-  "keyframe_prompt": "one photoreal FIRST-FRAME description carrying the locked lighting, lens, grade + pore-level skin; no text or watermark",
-  "video_prompt": "the FULL labelled multi-section prompt (STYLE, SUBJECT, ACTION timecoded, CAMERA, GRADE, CONSTRAINTS, AUDIO) — rich and quantified",
-  "negative_prompt": "a tuned negative prompt"
-}`;
+Return EXACTLY the three sections below, each on its own lines after its marker, with NO other text and NO markdown fences:
+<<<KEYFRAME>>>
+one photoreal FIRST-FRAME description carrying the locked lighting, lens, grade + pore-level skin; no text or watermark
+<<<VIDEO>>>
+the FULL labelled multi-section prompt (STYLE, SUBJECT, ACTION timecoded, CAMERA, GRADE, CONSTRAINTS, AUDIO) — rich and quantified
+<<<NEGATIVE>>>
+a tuned negative prompt
+<<<END>>>`;
 
   try {
     const res = await fetch(
@@ -126,9 +127,9 @@ Return STRICT JSON only:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: instruction }] }],
-          // A little heat so takes differ; nudged by the variation index.
+          // A little heat so takes differ; nudged by the variation index. No JSON mode —
+          // we parse delimiter sections (below), which don't break on stray quotes.
           generationConfig: {
-            responseMimeType: "application/json",
             temperature: 0.9 + Math.min((opts.variation ?? 0) * 0.05, 0.25),
             maxOutputTokens: 8192,
           },
@@ -139,12 +140,21 @@ Return STRICT JSON only:
     const json = (await res.json()) as {
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
     };
-    const raw = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
-    const p = JSON.parse(raw) as Partial<{
-      keyframe_prompt: string;
-      video_prompt: string;
-      negative_prompt: string;
-    }>;
+    const raw = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    // Delimiter parse (not JSON): long prose values break JSON with stray quotes /
+    // truncation. Splitting on markers is robust — truncation only loses the tail.
+    const section = (a: string, b: string): string => {
+      const s = raw.indexOf(a);
+      if (s < 0) return "";
+      const start = s + a.length;
+      const e = raw.indexOf(b, start);
+      return raw.slice(start, e < 0 ? undefined : e).trim();
+    };
+    const p = {
+      keyframe_prompt: section("<<<KEYFRAME>>>", "<<<VIDEO>>>"),
+      video_prompt: section("<<<VIDEO>>>", "<<<NEGATIVE>>>"),
+      negative_prompt: section("<<<NEGATIVE>>>", "<<<END>>>"),
+    };
     const fb = fallback(opts);
     return {
       keyframePrompt: p.keyframe_prompt?.trim() || fb.keyframePrompt,
