@@ -86,9 +86,16 @@ export async function arkSeedanceVideo(opts: {
       status?: string;
       content?: { video_url?: string } | Array<{ video_url?: string }>;
       video_url?: string;
+      usage?: { total_tokens?: number; completion_tokens?: number };
       error?: { message?: string };
     };
     if (j.status === "succeeded") {
+      // Ark bills by tokens — surface the REAL ByteDance usage per render in the logs.
+      console.log(
+        `[ark] seedance ok · model=${body.model} · ${body.resolution} · ${body.duration}s · usage=${
+          j.usage?.total_tokens ?? "?"
+        } tokens`,
+      );
       return (Array.isArray(j.content) ? j.content[0]?.video_url : j.content?.video_url) ?? j.video_url ?? null;
     }
     if (j.status === "failed" || j.status === "expired" || j.status === "cancelled") {
