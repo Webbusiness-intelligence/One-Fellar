@@ -548,6 +548,15 @@ html[data-theme="rose"] {
 }
 .pulse-glow { animation: kimi-pulse-glow 4s ease-in-out infinite; }
 
+/* ---- Showcase marquee (landing) — content is duplicated once, so -50% loops seamlessly ---- */
+@keyframes kimi-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee-track { display: flex; width: max-content; gap: 1rem; animation: kimi-marquee 48s linear infinite; }
+.marquee-track.reverse { animation-direction: reverse; }
+.marquee-row:hover .marquee-track { animation-play-state: paused; }
+
 @media (prefers-reduced-motion: reduce) {
   .shimmer-border::before,
   .animate-fade-in-up,
@@ -557,5 +566,6 @@ html[data-theme="rose"] {
   .float-particle,
   .float-particle-delay,
   .float-particle-delay-2,
+  .marquee-track,
   .pulse-glow { animation: none; }
 }
