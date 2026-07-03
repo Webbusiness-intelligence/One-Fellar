@@ -18,7 +18,7 @@ import { gptImageEdit, gptImageGenerate } from "@/lib/ai-ads/chat-models";
 import { directCinematic, directCuts, type Subject } from "@/lib/ai-ads/cinematic-director";
 import { resolveSkill } from "@/lib/ai-ads/resolve-skill";
 import { skillAddendum } from "@/lib/ai-ads/skills";
-import { stitchClips } from "@/lib/ai-ads/video-stitch";
+import { stitchClips, transcodeToFit } from "@/lib/ai-ads/video-stitch";
 import { VIDEO_ENGINE_SEC, VIDEO_RES_MULT, FAL, toCredits } from "@/lib/ai-ads/cost";
 import { admin, pub, BUCKET, insertAsset, resolveSouls, setProgress, type Job } from "./db";
 
@@ -119,11 +119,35 @@ export async function runVideoJob(job: Job): Promise<number> {
     return u.error ? null : pub(p);
   };
 
+  // Supabase caps uploads at 50 MB (bucket + free-tier project limit). Long 4K clips
+  // can exceed it — transcode down to fit rather than losing a paid render.
+  const SIZE_CAP = 48 * 1024 * 1024; // headroom under the 50 MB limit
+  const fitUnderCap = async (bytes: Uint8Array, durationSec: number): Promise<Uint8Array> => {
+    if (bytes.length <= SIZE_CAP) return bytes;
+    const dir = await mkdtemp(join(tmpdir(), "fit-"));
+    try {
+      const src = join(dir, "in.mp4");
+      const out = join(dir, "out.mp4");
+      await writeFile(src, bytes);
+      // Video bitrate that lands under the cap for this duration (minus audio 128k).
+      const kbps = Math.max(2000, Math.floor((SIZE_CAP * 8) / 1024 / Math.max(1, durationSec)) - 300);
+      await transcodeToFit(src, out, kbps);
+      const smaller = new Uint8Array(await readFile(out));
+      console.log(
+        `[worker] oversized clip transcoded ${(bytes.length / 1048576).toFixed(1)}MB → ${(smaller.length / 1048576).toFixed(1)}MB`,
+      );
+      return smaller;
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  };
+
   const storeVideo = async (vurl: string, variation: number, meta: Record<string, unknown>) => {
     const res = await fetch(vurl);
     if (!res.ok) throw new Error(`video download failed (${res.status}) from ${vurl.slice(0, 80)}`);
-    const bytes = new Uint8Array(await res.arrayBuffer());
+    let bytes = new Uint8Array(await res.arrayBuffer());
     if (bytes.length < 1024) throw new Error(`video download too small (${bytes.length} bytes) — an error page, not a clip`);
+    bytes = await fitUnderCap(bytes, Number(meta.duration) || duration);
     const path = `outputs/${job.account_id}/${job.id}/${variation}.mp4`;
     const up = await admin.storage.from(BUCKET).upload(path, bytes, { contentType: "video/mp4", upsert: true });
     if (up.error) throw new Error(`video upload failed: ${up.error.message}`);
@@ -316,10 +340,10 @@ export async function runVideoJob(job: Job): Promise<number> {
       );
       const stitched = join(dir, "out.mp4");
       await stitchClips(usedShots.map((s, i) => ({ path: localPaths[i], transition: s.transition })), stitched);
-      const finalBytes = new Uint8Array(await readFile(stitched));
+      const finalBytes = await fitUnderCap(new Uint8Array(await readFile(stitched)), totalDur);
       const path = `outputs/${job.account_id}/${job.id}/${variation}.mp4`;
       const up = await admin.storage.from(BUCKET).upload(path, finalBytes, { contentType: "video/mp4", upsert: true });
-      if (up.error) return false;
+      if (up.error) throw new Error(`stitched video upload failed: ${up.error.message}`);
       const id = await insertAsset(job, {
         type: "video",
         storagePath: path,

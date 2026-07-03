@@ -2,15 +2,27 @@
 // filter. Hard cuts use a 1-frame crossfade (visually instant); dissolve / fade /
 // whip are real cinematic transitions. Video-only (cut-mode clips are silent).
 //
-// Local dev uses the system ffmpeg/ffprobe (override with FFMPEG_PATH / FFPROBE_PATH).
-// For serverless prod, add the `ffmpeg-static` / `ffprobe-static` packages and point
-// these envs at their binaries.
+// Binary resolution: FFMPEG_PATH / FFPROBE_PATH env override → bundled static
+// binaries (ffmpeg-static / ffprobe-static, works on Render + local) → system PATH.
 
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import type { CutTransition } from "./cinematic-director";
 
-const FFMPEG = process.env.FFMPEG_PATH || "ffmpeg";
-const FFPROBE = process.env.FFPROBE_PATH || "ffprobe";
+const req = createRequire(import.meta.url);
+function resolveBin(envPath: string | undefined, pkg: string, fallback: string): string {
+  if (envPath) return envPath;
+  try {
+    const m = req(pkg) as string | { path?: string } | null;
+    const p = typeof m === "string" ? m : m?.path;
+    if (p) return p;
+  } catch {
+    /* package not installed — fall back to system binary */
+  }
+  return fallback;
+}
+const FFMPEG = resolveBin(process.env.FFMPEG_PATH, "ffmpeg-static", "ffmpeg");
+const FFPROBE = resolveBin(process.env.FFPROBE_PATH, "ffprobe-static", "ffprobe");
 
 // xfade transition name + duration (seconds) per our transition kinds.
 const XFADE: Record<CutTransition, { name: string; dur: number }> = {
@@ -54,6 +66,25 @@ async function probe(path: string): Promise<{ duration: number; width: number; h
   const fps = d ? n / d : 30;
   const duration = parseFloat(lines[3]) || 0;
   return { duration, width, height, fps: Math.round(fps) || 30 };
+}
+
+// Re-encode a clip to fit under a byte budget: capped-bitrate H.264 at the SAME
+// resolution, audio kept (AAC 128k). Used when a rendered clip exceeds the
+// Supabase bucket's 50 MB upload cap so a paid render is never lost.
+export async function transcodeToFit(src: string, out: string, videoKbps: number): Promise<void> {
+  await run(FFMPEG, [
+    "-i", src,
+    "-c:v", "libx264",
+    "-preset", "fast",
+    "-b:v", `${videoKbps}k`,
+    "-maxrate", `${videoKbps}k`,
+    "-bufsize", `${videoKbps * 2}k`,
+    "-pix_fmt", "yuv420p",
+    "-c:a", "aac",
+    "-b:a", "128k",
+    "-movflags", "+faststart",
+    "-y", out,
+  ]);
 }
 
 // Stitch clips (in order). `transition` is the transition INTO each clip; the first
