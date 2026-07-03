@@ -95,7 +95,7 @@ export async function arkSeedanceVideo(opts: {
       console.log(
         `[ark] seedance ok · model=${body.model} · ${body.resolution} · ${body.duration}s · usage=${
           j.usage?.total_tokens ?? "?"
-        } tokens${url ? "" : " · NO video_url!"}`,
+        } tokens · task=${created.id}${url ? ` · url=${url}` : " · NO video_url!"}`,
       );
       // Succeeded (and billed) but no URL means the response shape changed — surface the
       // actual content instead of returning null and failing downstream with no clue.
