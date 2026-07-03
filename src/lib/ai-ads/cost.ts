@@ -168,8 +168,9 @@ export const VIDEO_ENGINE_SEC: Record<string, number> = {
   "seedance-fast": FAL.seedanceFastSec,
 };
 // Resolution scales video cost (Seedance is billed by pixels × frames; 720p is the
-// base rate). Kling ignores resolution → pass 720p (×1). 4K ≈ 5× 720p.
-export const VIDEO_RES_MULT: Record<string, number> = { "480p": 0.45, "720p": 1, "1080p": 2.25, "4k": 5 };
+// base rate). Kling ignores resolution → pass 720p (×1). Multipliers are the exact
+// pixel ratios, confirmed by real Ark token usage (4K = 9.0× 720p at both 5s and 15s).
+export const VIDEO_RES_MULT: Record<string, number> = { "480p": 0.45, "720p": 1, "1080p": 2.25, "4k": 9 };
 
 // Credits to render one scene: N takes × duration × engine/sec × resolution + a
 // keyframe (gpt med). `resolution` defaults to 720p (×1) so existing callers are
