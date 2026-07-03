@@ -10,7 +10,8 @@ import {
 } from "@/lib/ai-ads/chat-models";
 import { directImage } from "@/lib/ai-ads/image-director";
 import { postToSocial } from "@/lib/ayrshare";
-import { admin, BUCKET } from "./db";
+import { studioModelUsd, FAL, toCredits } from "@/lib/ai-ads/cost";
+import { admin, BUCKET, type Job } from "./db";
 
 interface Rule {
   id: string;
@@ -51,30 +52,78 @@ async function autoCaption(brief: string): Promise<string> {
   }
 }
 
+const RULE_COLS =
+  "id, account_id, prompt, caption, platforms, interval_hours, ref_urls, soul_ids, format, mood, model, auto_caption";
+
+// Worst-case reserve per post: image (medium) + director + optional caption.
+const RULE_EST = toCredits(FAL.gptImageMedium + 2 * FAL.geminiText);
+
 export async function runAutopilotTick(): Promise<void> {
   const { data } = await admin
     .from("autopilot_rules")
-    .select("id, account_id, prompt, caption, platforms, interval_hours, ref_urls, soul_ids, format, mood, model, auto_caption")
+    .select(RULE_COLS)
     .eq("active", true)
     .lte("next_run_at", new Date().toISOString())
     .limit(10);
   for (const r of (data ?? []) as Rule[]) {
+    // Advance the schedule FIRST so a failure can't hot-loop the rule.
+    const nextRun = new Date(Date.now() + Math.max(1, r.interval_hours) * 3_600_000).toISOString();
+    await admin
+      .from("autopilot_rules")
+      .update({ last_run_at: new Date().toISOString(), next_run_at: nextRun })
+      .eq("id", r.id);
+
+    // Reserve credits + enqueue as a real ad_jobs row (type 'autopilot') so posts go
+    // through the same atomic reserve → settle/refund path as every other generation.
+    const { error } = await admin.rpc("reserve_and_enqueue", {
+      acct: r.account_id,
+      creator: null,
+      est: RULE_EST,
+      payload: { ruleId: r.id },
+      jtype: "autopilot",
+      fmt: r.format || "1:1",
+    });
+    if (!error) continue; // dispatcher picks it up
+
+    if (/insufficient_credits/i.test(error.message)) {
+      await admin.from("scheduled_posts").insert({
+        account_id: r.account_id,
+        caption: r.caption,
+        media_urls: [],
+        platforms: r.platforms,
+        scheduled_at: null,
+        status: "failed",
+        error: "insufficient credits",
+        autopilot_rule_id: r.id,
+      });
+      console.warn(`[autopilot] rule ${r.id} skipped — insufficient credits`);
+      continue;
+    }
+    // e.g. ad_jobs type CHECK not yet extended (migration 041) — keep posting rather
+    // than silently stopping, but say loudly that this run is unbilled.
+    console.warn(`[autopilot] billing unavailable (${error.message}) — running rule ${r.id} UNBILLED; apply migration 041`);
     try {
-      await runRule(r);
+      await executeRule(r);
     } catch (e) {
       console.error(`[autopilot] rule ${r.id}:`, (e as Error)?.message ?? e);
     }
   }
 }
 
-async function runRule(r: Rule): Promise<void> {
-  // Advance the schedule FIRST so a failure can't hot-loop the rule.
-  const nextRun = new Date(Date.now() + Math.max(1, r.interval_hours) * 3_600_000).toISOString();
-  await admin
-    .from("autopilot_rules")
-    .update({ last_run_at: new Date().toISOString(), next_run_at: nextRun })
-    .eq("id", r.id);
+// Job-queue entry point: the dispatcher claimed a reserved 'autopilot' job — load the
+// rule and execute the post. Returns actual credits; a throw refunds the reserve.
+export async function runAutopilotJob(job: Job): Promise<number> {
+  const ruleId = String((job.brief as { ruleId?: string } | null)?.ruleId ?? "");
+  if (!ruleId) throw new Error("autopilot job missing ruleId");
+  const { data: r } = await admin.from("autopilot_rules").select(RULE_COLS).eq("id", ruleId).single();
+  if (!r) throw new Error("autopilot rule not found");
+  return executeRule(r as Rule);
+}
 
+// Generate + post one rule. Always records a scheduled_posts row (posted or failed);
+// throws on failure so a queued job's reserve is refunded. Returns actual credits.
+async function executeRule(r: Rule): Promise<number> {
+  let costUsd = 0;
   let mediaUrl: string | null = null;
   let status: "posted" | "failed" = "posted";
   let error: string | null = null;
@@ -109,6 +158,7 @@ async function runRule(r: Rule): Promise<void> {
       aspect: format,
       subjects: subjects.length ? subjects : undefined,
     });
+    costUsd += FAL.geminiText;
 
     // Model: the rule's pick, or auto (GPT Image 2 with refs, else 1.5). A prompt-only
     // pick is bumped to GPT Image 2 when references are present so they aren't dropped.
@@ -128,8 +178,12 @@ async function runRule(r: Rule): Promise<void> {
       num: 1,
     });
     if (!urls.length) throw new Error("generation returned no image");
+    costUsd += studioModelUsd(model, "hd"); // "hd" = the medium gpt quality used above
 
-    if (r.auto_caption) caption = (await autoCaption(cleanPrompt)) || r.caption;
+    if (r.auto_caption) {
+      caption = (await autoCaption(cleanPrompt)) || r.caption;
+      costUsd += FAL.geminiText;
+    }
 
     const bytes = new Uint8Array(await (await fetch(urls[0])).arrayBuffer());
     const path = `outputs/${r.account_id}/autopilot/${r.id}/${Date.now()}.png`;
@@ -156,4 +210,6 @@ async function runRule(r: Rule): Promise<void> {
     autopilot_rule_id: r.id,
   });
   console.log(`[autopilot] rule ${r.id} -> ${status}`);
+  if (status === "failed") throw new Error(error || "autopilot post failed"); // job path refunds the reserve
+  return toCredits(costUsd);
 }

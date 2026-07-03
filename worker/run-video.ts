@@ -145,7 +145,7 @@ export async function runVideoJob(job: Job): Promise<number> {
   const storeVideo = async (vurl: string, variation: number, meta: Record<string, unknown>) => {
     const res = await fetch(vurl);
     if (!res.ok) throw new Error(`video download failed (${res.status}) from ${vurl.slice(0, 80)}`);
-    let bytes = new Uint8Array(await res.arrayBuffer());
+    let bytes: Uint8Array = new Uint8Array(await res.arrayBuffer());
     if (bytes.length < 1024) throw new Error(`video download too small (${bytes.length} bytes) — an error page, not a clip`);
     bytes = await fitUnderCap(bytes, Number(meta.duration) || duration);
     const path = `outputs/${job.account_id}/${job.id}/${variation}.mp4`;
