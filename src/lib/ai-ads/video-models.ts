@@ -10,7 +10,7 @@ export type VideoEngine = "kling-pro" | "kling-turbo" | "seedance-pro" | "seedan
 
 type VideoOut = { video?: { url?: string } };
 
-const Q = { pollMs: 6000, timeoutMs: 600000 } as const;
+const Q = { pollMs: 6000, timeoutMs: 1200000 } as const; // 20 min ceiling — 4K/15s reference renders can exceed 10
 const DEFAULT_NEG = "blur, distort, and low quality";
 
 export async function klingImageToVideo(opts: {

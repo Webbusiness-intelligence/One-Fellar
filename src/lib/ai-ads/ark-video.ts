@@ -20,7 +20,7 @@ const MODEL = process.env.ARK_SEEDANCE_MODEL || "dreamina-seedance-2-0-260128";
 const FAST_MODEL = process.env.ARK_SEEDANCE_FAST_MODEL || "dreamina-seedance-2-0-fast-260128";
 
 const POLL_MS = 6000;
-const TIMEOUT_MS = 600_000;
+const TIMEOUT_MS = 1_200_000; // 20 min — heaviest 4K/15s renders can run past 10
 
 export function arkSeedanceEnabled(): boolean {
   return !!KEY && process.env.USE_ARK_SEEDANCE === "1";
