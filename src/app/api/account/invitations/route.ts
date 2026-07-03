@@ -131,7 +131,7 @@ function getBaseUrl(request: Request): string {
       "[POST /api/account/invitations] could not derive base URL from request; falling back to marketing domain",
     );
   }
-  return "https://one-fellar.vercel.app";
+  return "https://genalot.com";
 }
 
 const MAX_LABEL_LEN = 80;
