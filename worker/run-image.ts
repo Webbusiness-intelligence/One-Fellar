@@ -123,7 +123,8 @@ export async function runImageJob(job: Job): Promise<number> {
 
   const assetIds: string[] = [];
   for (let i = 0; i < urls.length; i++) {
-    const bytes = new Uint8Array(await (await fetch(urls[i])).arrayBuffer());
+    let bytes = new Uint8Array(await (await fetch(urls[i])).arrayBuffer());
+    if (b.watermark) bytes = await addWatermark(bytes); // free-tier outputs carry the wordmark
     const path = `outputs/${job.account_id}/${job.id}/${i}.png`;
     const up = await admin.storage.from(BUCKET).upload(path, bytes, { contentType: "image/png", upsert: true });
     if (up.error) continue;
