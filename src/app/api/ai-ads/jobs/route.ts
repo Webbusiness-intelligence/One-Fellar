@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     let chatId: string | undefined;
 
     if (kind === "video") {
-      const prompt = String(form.get("prompt") ?? "").trim().slice(0, 5000);
+      const prompt = String(form.get("prompt") ?? "").trim().slice(0, 20000);
       if (!prompt) return NextResponse.json({ error: "Describe the video" }, { status: 400 });
       const engine = String(form.get("engine") || "seedance-fast");
       const duration = Math.min(Math.max(Math.round(Number(form.get("duration")) || 5), 3), 15);
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
       const cuts = String(form.get("cuts") ?? "false") === "true";
       const soulIds = parseIds("soulIds");
       const skillId = String(form.get("skillId") ?? "").trim() || null;
-      const enhancedPrompt = String(form.get("enhancedPrompt") ?? "").trim().slice(0, 5000) || null;
+      const enhancedPrompt = String(form.get("enhancedPrompt") ?? "").trim().slice(0, 20000) || null;
       const enhancedKeyframe = String(form.get("enhancedKeyframe") ?? "").trim().slice(0, 2000) || null;
 
       // A start frame is uploaded now (brief is JSON) so the worker can fetch it.

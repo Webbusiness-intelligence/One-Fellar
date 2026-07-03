@@ -45,7 +45,7 @@ type Brief = {
 
 export async function runVideoJob(job: Job): Promise<number> {
   const b = (job.brief ?? {}) as Brief;
-  const prompt = String(b.prompt ?? "").trim().slice(0, 5000);
+  const prompt = String(b.prompt ?? "").trim().slice(0, 20000);
   if (!prompt) throw new Error("Describe the video");
 
   const engine = (ENGINES as string[]).includes(String(b.engine))
@@ -54,7 +54,7 @@ export async function runVideoJob(job: Job): Promise<number> {
   // kling's prompt field caps at 2500 chars; seedance handles long prompts. Cap what
   // we send (safety net so an over-long director prompt never 422s) and steer the
   // director to stay under the budget so it writes concise-but-complete, not truncated.
-  const promptMax = engine.startsWith("kling") ? 2400 : 5000;
+  const promptMax = engine.startsWith("kling") ? 2400 : 20000;
   const clampPrompt = (p: string) => (p.length > promptMax ? p.slice(0, promptMax) : p);
   // i2v paths (kling, seedance image-to-video, every cut shot) get NO reference-images
   // array, so @ImageN tags (valid only for seedance reference-to-video) make fal 422.

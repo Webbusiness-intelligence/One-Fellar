@@ -288,10 +288,10 @@ export function VideoClient({ initial }: { initial: VideoItem[] }) {
           />
           <div
             className={`mt-1 pr-1 text-right text-[11px] ${
-              prompt.length > 5000 ? "text-amber-400" : "text-muted-foreground/60"
+              prompt.length > 20000 ? "text-amber-400" : "text-muted-foreground/60"
             }`}
           >
-            {prompt.length.toLocaleString()} / 5,000
+            {prompt.length.toLocaleString()} / 20,000
           </div>
         </div>
 
