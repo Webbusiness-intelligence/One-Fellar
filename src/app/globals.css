@@ -555,7 +555,33 @@ html[data-theme="rose"] {
 }
 .marquee-track { display: flex; width: max-content; gap: 1rem; animation: kimi-marquee 48s linear infinite; }
 .marquee-track.reverse { animation-direction: reverse; }
+.marquee-track.slow { animation-duration: 64s; }
+.marquee-row { position: relative; }
 .marquee-row:hover .marquee-track { animation-play-state: paused; }
+.marquee-row::before,
+.marquee-row::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6rem;
+  z-index: 2;
+  pointer-events: none;
+}
+.marquee-row::before { left: 0; background: linear-gradient(to right, #050508, transparent); }
+.marquee-row::after { right: 0; background: linear-gradient(to left, #050508, transparent); }
+
+/* ---- Typewriter caret (landing hero prompt bar) ---- */
+@keyframes kimi-caret { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.type-caret { animation: kimi-caret 1s step-end infinite; }
+
+/* ---- Scroll reveal (landing sections) ---- */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.in { opacity: 1; transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .shimmer-border::before,
@@ -567,5 +593,7 @@ html[data-theme="rose"] {
   .float-particle-delay,
   .float-particle-delay-2,
   .marquee-track,
+  .type-caret,
   .pulse-glow { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
 }
