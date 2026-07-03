@@ -120,10 +120,13 @@ export async function runVideoJob(job: Job): Promise<number> {
   };
 
   const storeVideo = async (vurl: string, variation: number, meta: Record<string, unknown>) => {
-    const bytes = new Uint8Array(await (await fetch(vurl)).arrayBuffer());
+    const res = await fetch(vurl);
+    if (!res.ok) throw new Error(`video download failed (${res.status}) from ${vurl.slice(0, 80)}`);
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.length < 1024) throw new Error(`video download too small (${bytes.length} bytes) — an error page, not a clip`);
     const path = `outputs/${job.account_id}/${job.id}/${variation}.mp4`;
     const up = await admin.storage.from(BUCKET).upload(path, bytes, { contentType: "video/mp4", upsert: true });
-    if (up.error) return null;
+    if (up.error) throw new Error(`video upload failed: ${up.error.message}`);
     return insertAsset(job, { type: "video", storagePath: path, variationIndex: variation, metadata: meta });
   };
 

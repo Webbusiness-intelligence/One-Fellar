@@ -90,13 +90,17 @@ export async function arkSeedanceVideo(opts: {
       error?: { message?: string };
     };
     if (j.status === "succeeded") {
+      const url = (Array.isArray(j.content) ? j.content[0]?.video_url : j.content?.video_url) ?? j.video_url ?? null;
       // Ark bills by tokens — surface the REAL ByteDance usage per render in the logs.
       console.log(
         `[ark] seedance ok · model=${body.model} · ${body.resolution} · ${body.duration}s · usage=${
           j.usage?.total_tokens ?? "?"
-        } tokens`,
+        } tokens${url ? "" : " · NO video_url!"}`,
       );
-      return (Array.isArray(j.content) ? j.content[0]?.video_url : j.content?.video_url) ?? j.video_url ?? null;
+      // Succeeded (and billed) but no URL means the response shape changed — surface the
+      // actual content instead of returning null and failing downstream with no clue.
+      if (!url) throw new Error(`Ark succeeded but returned no video_url — content=${JSON.stringify(j.content)?.slice(0, 300)}`);
+      return url;
     }
     if (j.status === "failed" || j.status === "expired" || j.status === "cancelled") {
       throw new Error(`Ark task ${j.status}: ${j.error?.message || "generation failed"}`);
