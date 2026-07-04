@@ -42,9 +42,6 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-  icons: {
-    icon: [{ url: "/icon" }],
-  },
   formatDetection: {
     email: false,
     address: false,
