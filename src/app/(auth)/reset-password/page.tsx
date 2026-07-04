@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lock, ArrowRight, ArrowLeft } from "lucide-react";
+import { Lock, ArrowRight, ArrowLeft, Eye, EyeOff } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { AuthShell, AuthField, AuthError } from "../auth-ui";
@@ -15,6 +15,7 @@ import { AuthShell, AuthField, AuthError } from "../auth-ui";
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
@@ -106,12 +107,22 @@ export default function ResetPasswordPage() {
           <label className="mb-1.5 block text-[12px] font-medium text-white/50">New password</label>
           <AuthField
             icon={Lock}
-            type="password"
+            type={showPass ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="At least 8 characters"
             required
             autoComplete="new-password"
+            rightSlot={
+              <button
+                type="button"
+                onClick={() => setShowPass((v) => !v)}
+                aria-label={showPass ? "Hide password" : "Show password"}
+                className="absolute right-3.5 text-white/25 transition-colors hover:text-white/50"
+              >
+                {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            }
           />
         </div>
 
@@ -119,7 +130,7 @@ export default function ResetPasswordPage() {
           <label className="mb-1.5 block text-[12px] font-medium text-white/50">Confirm password</label>
           <AuthField
             icon={Lock}
-            type="password"
+            type={showPass ? "text" : "password"}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             placeholder="Repeat the password"
