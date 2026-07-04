@@ -603,8 +603,8 @@ export function Landing() {
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/[0.06] px-6 py-12">
-        <div className="mx-auto grid max-w-[1200px] gap-10 sm:grid-cols-3">
-          <div>
+        <div className="mx-auto grid max-w-[1200px] gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/genalot-icon.png" alt="Genalot" className="h-7 w-7 rounded-md" />
@@ -628,6 +628,14 @@ export function Landing() {
             <div className="mt-3 flex flex-col gap-2">
               <Link href="/login" className="w-fit text-[12.5px] text-white/40 transition-colors hover:text-white/70">Log in</Link>
               <Link href="/signup" className="w-fit text-[12.5px] text-white/40 transition-colors hover:text-white/70">Sign up</Link>
+            </div>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/25">Legal</p>
+            <div className="mt-3 flex flex-col gap-2">
+              <Link href="/terms" className="w-fit text-[12.5px] text-white/40 transition-colors hover:text-white/70">Terms of Service</Link>
+              <Link href="/privacy" className="w-fit text-[12.5px] text-white/40 transition-colors hover:text-white/70">Privacy Policy</Link>
+              <Link href="/refund" className="w-fit text-[12.5px] text-white/40 transition-colors hover:text-white/70">Refund Policy</Link>
             </div>
           </div>
         </div>

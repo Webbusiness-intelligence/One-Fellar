@@ -177,6 +177,13 @@ function SignupPageInner() {
             </>
           )}
         </button>
+
+        <p className="text-center text-[11px] leading-relaxed text-white/30">
+          By creating an account you agree to our{" "}
+          <Link href="/terms" className="text-white/50 underline-offset-2 hover:text-white/70 hover:underline">Terms of Service</Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="text-white/50 underline-offset-2 hover:text-white/70 hover:underline">Privacy Policy</Link>.
+        </p>
       </form>
 
       <p className="mt-5 text-center text-[12px] text-white/30">
