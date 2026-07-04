@@ -18,8 +18,25 @@ export default function ForgotPasswordPage() {
     setError(null);
     setLoading(true);
 
+    // Tell the user up-front if there's no account for this email.
+    try {
+      const res = await fetch("/api/auth/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const j = (await res.json()) as { exists?: boolean };
+      if (res.ok && j.exists === false) {
+        setError("We don't have an account with that email. Check the address, or create one.");
+        setLoading(false);
+        return;
+      }
+    } catch {
+      // network hiccup on the check — fall through and try the reset anyway
+    }
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     if (error) {
       setError(error.message);
