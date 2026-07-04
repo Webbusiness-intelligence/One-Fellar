@@ -32,7 +32,7 @@ export async function POST(req: Request) {
       }
       const { authorization_url } = await initTransaction({
         email,
-        amountSubunits: Math.round(plan.zarPerMonth * 100), // ZAR cents (Paystack uses the plan's amount)
+        amountSubunits: Math.round(plan.usdPerMonth * 100), // ignored when planCode is set — the Paystack plan's own amount/currency wins
         planCode: code,
         callbackUrl,
         metadata: { accountId: ctx.accountId, kind: "plan", planId: plan.id },
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       if (!pack) return NextResponse.json({ error: "Unknown pack" }, { status: 400 });
       const { authorization_url } = await initTransaction({
         email,
-        amountSubunits: Math.round(pack.zar * 100),
+        amountSubunits: Math.round(pack.usd * 100), // USD cents
         currency: BILLING_CURRENCY,
         callbackUrl,
         metadata: { accountId: ctx.accountId, kind: "pack", packId: pack.id, credits: pack.credits },

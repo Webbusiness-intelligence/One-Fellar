@@ -19,7 +19,7 @@ import { PLANS, CREDIT_PACKS } from "@/lib/ai-ads/cost";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
-const zar = (n: number) => `R${n.toLocaleString("en-ZA")}`;
+const usd = (n: number) => `$${n.toLocaleString("en-US")}`;
 const PLAN_ICON: Record<string, LucideIcon> = { free: Sparkles, starter: Zap, pro: Crown, studio: Building2 };
 
 type Usage = { month: { credits: number; images: number }; all: { credits: number; images: number } };
@@ -75,7 +75,7 @@ export function BillingClient() {
             <div>
               <p className="text-[14px] font-semibold text-foreground">{plan.name} plan</p>
               <p className="text-[12px] text-white/30">
-                {paid ? `${zar(plan.zarPerMonth)}/month · ` : "Free · "}
+                {paid ? `${usd(plan.usdPerMonth)}/month · ` : "Free · "}
                 {plan.creditsPerMonth.toLocaleString()} credits / month
               </p>
             </div>
@@ -146,7 +146,7 @@ export function BillingClient() {
               )}
               <p className="text-[16px] font-bold text-foreground">{pk.credits.toLocaleString()}</p>
               <p className="text-[10px] text-white/30">credits</p>
-              <p className="mt-1 text-[13px] font-semibold text-primary">{zar(pk.zar)}</p>
+              <p className="mt-1 text-[13px] font-semibold text-primary">{usd(pk.usd)}</p>
             </button>
           ))}
         </div>

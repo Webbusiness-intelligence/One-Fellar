@@ -6,7 +6,7 @@ import { Check, Loader2, Sparkles, Zap, Crown, Building2, ArrowRight, type Lucid
 import { PLANS, CREDIT_PACKS } from "@/lib/ai-ads/cost";
 import { cn } from "@/lib/utils";
 
-const zar = (n: number) => `R${n.toLocaleString("en-ZA")}`;
+const usd = (n: number) => `$${n.toLocaleString("en-US")}`;
 
 const PLAN_ICON: Record<string, LucideIcon> = {
   free: Sparkles,
@@ -53,7 +53,7 @@ export function PricingClient() {
           Plans &amp; <em className="italic text-primary">credits</em>
         </h1>
         <p className="mx-auto mt-4 max-w-lg text-[14px] text-white/40">
-          Studio-grade quality — pay only for what you generate. Billed in ZAR via Paystack.
+          Studio-grade quality — pay only for what you generate. Billed in USD.
         </p>
       </div>
 
@@ -88,9 +88,9 @@ export function PricingClient() {
               <p className="mb-4 text-[13px] text-white/40">{p.blurb}</p>
               <div className="mb-6 flex items-baseline gap-1">
                 <span className="text-4xl font-bold text-foreground">
-                  {p.zarPerMonth === 0 ? "Free" : zar(p.zarPerMonth)}
+                  {p.usdPerMonth === 0 ? "Free" : usd(p.usdPerMonth)}
                 </span>
-                {p.zarPerMonth > 0 && <span className="text-[13px] text-white/30">/mo</span>}
+                {p.usdPerMonth > 0 && <span className="text-[13px] text-white/30">/mo</span>}
               </div>
               <ul className="mb-8 flex-1 space-y-3">
                 {planFeatures(p).map((f) => (
@@ -137,7 +137,7 @@ export function PricingClient() {
             >
               <div>
                 <div className="text-lg font-semibold text-foreground">{pk.credits.toLocaleString()} credits</div>
-                <div className="text-[13px] text-white/40">{zar(pk.zar)} one-off</div>
+                <div className="text-[13px] text-white/40">{usd(pk.usd)} one-off</div>
               </div>
               <button
                 type="button"

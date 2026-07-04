@@ -7,8 +7,9 @@ import crypto from "node:crypto";
 const SECRET = process.env.PAYSTACK_SECRET_KEY ?? "";
 const BASE = "https://api.paystack.co";
 
-// Default billing currency. SA Paystack settles in ZAR; override with PAYSTACK_CURRENCY.
-export const BILLING_CURRENCY = process.env.PAYSTACK_CURRENCY ?? "ZAR";
+// Default billing currency. Override with PAYSTACK_CURRENCY. NOTE: charging USD
+// requires USD/multicurrency enabled on the Paystack account, or the charge is rejected.
+export const BILLING_CURRENCY = process.env.PAYSTACK_CURRENCY ?? "USD";
 
 // Recurring plan codes are created once in the Paystack dashboard and wired via env.
 export function planCode(planId: string): string | undefined {
