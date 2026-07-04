@@ -341,7 +341,7 @@ export function Landing() {
 
             <div className="animate-fade-in-up-delay-3 flex flex-wrap items-center justify-center gap-3">
               <Link href="/signup" className="ad-cta inline-flex items-center gap-2 rounded-xl px-7 py-3.5 text-[14px] font-semibold">
-                Start creating free <ArrowRight className="size-4" strokeWidth={2.5} />
+                Start creating <ArrowRight className="size-4" strokeWidth={2.5} />
               </Link>
               <Link
                 href="#showcase"
@@ -496,7 +496,7 @@ export function Landing() {
                   Type a prompt, pick 4K, and generate work like this — then schedule it straight to your channels.
                 </p>
                 <Link href="/signup" className="ad-cta mt-5 inline-flex w-fit items-center gap-2 rounded-xl px-5 py-2.5 text-[13px] font-semibold">
-                  Start free <ArrowRight className="size-3.5" strokeWidth={2.5} />
+                  Get started <ArrowRight className="size-3.5" strokeWidth={2.5} />
                 </Link>
               </div>
             </Reveal>
@@ -586,7 +586,7 @@ export function Landing() {
               </h2>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                 <Link href="/signup" className="ad-cta inline-flex items-center gap-2 rounded-xl px-7 py-3.5 text-[14px] font-semibold">
-                  Start creating free <ArrowRight className="size-4" strokeWidth={2.5} />
+                  Start creating <ArrowRight className="size-4" strokeWidth={2.5} />
                 </Link>
                 <Link
                   href="/pricing"
@@ -595,7 +595,7 @@ export function Landing() {
                   <Sparkles className="size-4" /> See pricing
                 </Link>
               </div>
-              <p className="mt-5 text-[12px] text-white/25">Free plan · no card required · keep everything you make</p>
+              <p className="mt-5 text-[12px] text-white/25">Cancel anytime · 7-day refund on unused credits · you own everything you make</p>
             </div>
           </Reveal>
         </section>

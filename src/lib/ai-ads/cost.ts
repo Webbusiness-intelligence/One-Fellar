@@ -231,7 +231,9 @@ export interface Plan {
 }
 
 export const PLANS: Plan[] = [
-  { id: "free", name: "Free", usdPerMonth: 0, zarPerMonth: 0, creditsPerMonth: 400, seats: 1, blurb: "Try it — draft models, 720p, watermark." },
+  // 'free' is NOT a trial — it's the locked, non-subscriber state (0 usable credits).
+  // Kept only so billing lookups resolve; it is never shown on the pricing page.
+  { id: "free", name: "Free", usdPerMonth: 0, zarPerMonth: 0, creditsPerMonth: 0, seats: 1, blurb: "No active plan — subscribe to start creating." },
   { id: "starter", name: "Starter", usdPerMonth: 19, zarPerMonth: 349, creditsPerMonth: 2000, seats: 1, blurb: "All models, 1080p, no watermark." },
   { id: "pro", name: "Pro", usdPerMonth: 49, zarPerMonth: 899, creditsPerMonth: 6000, seats: 1, popular: true, blurb: "More credits + priority queue." },
   { id: "studio", name: "Studio", usdPerMonth: 149, zarPerMonth: 2699, creditsPerMonth: 20000, seats: 5, blurb: "Team seats, API, fastest queue." },
