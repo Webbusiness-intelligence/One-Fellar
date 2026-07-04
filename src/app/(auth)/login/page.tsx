@@ -40,7 +40,7 @@ function LoginPageInner() {
       setLoading(false);
       return;
     }
-    router.push(inviteToken ? `/join/${encodeURIComponent(inviteToken)}` : "/dashboard");
+    router.push(inviteToken ? `/join/${encodeURIComponent(inviteToken)}` : "/ad-studio");
   };
 
   return (
