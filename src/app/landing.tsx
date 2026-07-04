@@ -317,12 +317,15 @@ export function Landing() {
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
               <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Genalot Studio · now in native 4K</span>
             </div>
-            <h1 className="animate-fade-in-up-delay-1 mb-6 font-heading text-5xl font-semibold leading-[1.02] tracking-tight text-white sm:text-7xl lg:text-8xl">
+            <h1 className="animate-fade-in-up-delay-1 mb-5 font-heading text-5xl font-semibold leading-[1.02] tracking-tight text-white sm:text-7xl lg:text-8xl">
               What will you <em className="italic text-primary">create</em> today?
             </h1>
+            <p className="animate-fade-in-up-delay-1 mb-4 text-xl font-semibold tracking-tight text-white/90 sm:text-2xl">
+              Generate. <span className="text-primary">Publish.</span> Convert.
+            </p>
             <p className="animate-fade-in-up-delay-2 mx-auto mb-9 max-w-xl text-base leading-relaxed text-white/50 sm:text-lg">
-              Studio-grade film, ads, images and UGC — typed, not filmed. Then scheduled and
-              auto-posted. No cameras, no crew, no editors.
+              Genalot creates your content, auto-posts it to every channel, and turns it into
+              leads — all from one prompt. No cameras, no crew, no editors.
             </p>
 
             {/* Live prompt bar — the product, demoed */}
@@ -608,8 +611,8 @@ export function Landing() {
               <span className="text-[14px] font-semibold text-white/80">Genalot</span>
             </div>
             <p className="mt-3 max-w-xs text-[12.5px] leading-relaxed text-white/30">
-              The AI creation suite that closes the loop — from one line of text to finished ads,
-              images and film, scheduled and posted.
+              Generate. Publish. Convert. The AI suite that turns one prompt into finished ads,
+              images and film — auto-posted to your channels and working to bring you leads.
             </p>
           </div>
           <div>

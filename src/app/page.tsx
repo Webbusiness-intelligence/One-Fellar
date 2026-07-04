@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { Landing } from "./landing";
 
 export const metadata: Metadata = {
-  title: "Genalot — AI ad, image & video studio",
+  title: "Genalot — Generate. Publish. Convert.",
   description:
-    "Generate studio-grade ads, images and native-4K video from a prompt — then schedule and auto-post them. Genalot is the AI creation suite that closes the loop.",
+    "Generate studio-grade ads, images and native-4K video from a prompt, auto-post them to every channel, and turn them into leads. Genalot — Generate. Publish. Convert.",
   robots: { index: true, follow: true },
 };
 
