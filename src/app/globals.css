@@ -583,6 +583,10 @@ html[data-theme="rose"] {
 }
 .reveal.in { opacity: 1; transform: none; }
 
+/* ---- Hide scrollbar but keep scroll (landing carousel) ---- */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .shimmer-border::before,
   .animate-fade-in-up,

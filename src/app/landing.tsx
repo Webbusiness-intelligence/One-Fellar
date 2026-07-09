@@ -5,7 +5,11 @@
 // second banner → closing CTA. Every clip is REAL Genalot output (our storage,
 // our prompts) rendered in our yellow/dark design language.
 import Link from "next/link";
-import { ArrowRight, Play, Sparkles } from "lucide-react";
+import { ArrowRight, Play, Sparkles, Tag } from "lucide-react";
+
+// Match the reference's system-ui sans stack (no serif) across the landing.
+const SANS =
+  'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
 import { AmbientBackground } from "@/components/layout/ambient-background";
 
@@ -137,16 +141,16 @@ const FEATURED = [SHOWCASE[4], SHOWCASE[0], SHOWCASE[6], SHOWCASE[5], SHOWCASE[2
 // ---- Full-bleed template banners --------------------------------------------
 const BANNERS = [
   {
+    kicker: "Seedance 2.0 · native 4K · one continuous shot",
+    title: "Fairy run",
+    subtitle: "Typed, not filmed",
+    src: CDN + "outputs/c116b899-f1bc-4829-88c1-d1ae56aca2e3/3ee14e20-cddb-4ada-ba18-13a6297d7bb5/0.mp4",
+  },
+  {
     kicker: "Seedance 2.0 · native 4K",
     title: "Dragon flight",
     subtitle: "Fly through impossible worlds",
     src: "/showcase/genalot-4k-1.mp4",
-  },
-  {
-    kicker: "One continuous shot · 15 seconds",
-    title: "Fairy run",
-    subtitle: "Typed, not filmed",
-    src: CDN + "outputs/c116b899-f1bc-4829-88c1-d1ae56aca2e3/e381b1a6-7dbd-4f2a-92c9-bf2d2e66ee45/0.mp4",
   },
 ];
 
@@ -222,7 +226,7 @@ function TemplateBanner({ banner }: { banner: (typeof BANNERS)[number] }) {
         <span className="rounded-full bg-black/55 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur sm:text-xs">
           {banner.kicker}
         </span>
-        <h3 className="mt-2 font-heading text-3xl font-extrabold uppercase tracking-tight text-primary drop-shadow-[0_2px_18px_rgba(0,0,0,0.8)] sm:text-5xl">
+        <h3 className="mt-2 text-3xl font-extrabold uppercase tracking-tight text-primary drop-shadow-[0_2px_18px_rgba(0,0,0,0.8)] sm:text-5xl">
           {banner.title}
         </h3>
         <p className="mt-1 text-sm font-bold uppercase tracking-wide text-white/90 drop-shadow sm:text-base">
@@ -240,7 +244,7 @@ function TemplateBanner({ banner }: { banner: (typeof BANNERS)[number] }) {
 
 export function Landing() {
   return (
-    <div className="genalot-canvas relative min-h-screen overflow-hidden bg-[#050508] text-white">
+    <div className="genalot-canvas relative min-h-screen overflow-hidden bg-[#050508] text-white" style={{ fontFamily: SANS }}>
       <AmbientBackground />
 
       {/* Nav */}
@@ -250,34 +254,42 @@ export function Landing() {
           <img src="/genalot-icon.png" alt="Genalot" className="h-8 w-8 rounded-lg transition-transform group-hover:scale-105" />
           <span className="text-[15px] font-semibold tracking-tight text-white/90">Genalot</span>
         </Link>
-        <div className="flex items-center gap-2">
-          <Link href="/pricing" className="hidden rounded-lg px-4 py-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white/80 sm:block">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/pricing"
+            className="relative hidden items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-[13px] font-medium text-white/80 transition-colors hover:bg-white/[0.08] sm:flex"
+          >
+            <Tag className="h-3.5 w-3.5 text-primary" />
             Pricing
+            <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-1.5 py-px text-[9px] font-bold leading-none text-primary-foreground">
+              30% OFF
+            </span>
           </Link>
-          <Link href="/login" className="hidden rounded-lg px-4 py-2 text-[13px] font-medium text-white/50 transition-colors hover:text-white/80 sm:block">
+          <span className="hidden h-5 w-px bg-white/10 sm:block" />
+          <Link href="/login" className="text-[13px] font-medium text-white/50 transition-colors hover:text-white/80">
             Log in
           </Link>
-          <Link href="/signup" className="ad-cta rounded-xl px-4 py-2 text-[13px] font-semibold">
-            Get started
+          <Link href="/signup" className="ad-cta rounded-full px-5 py-2 text-[13px] font-semibold">
+            Sign up
           </Link>
         </div>
       </nav>
 
       <main className="relative z-10 overflow-hidden">
         {/* Compact hero */}
-        <section className="mx-auto max-w-[1600px] px-4 pt-12 pb-8 lg:px-6">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-sm text-white/50">
+        <section className="mx-auto max-w-[1600px] px-4 pt-5 pb-6 lg:px-6">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-sm text-white/50">
             <Sparkles className="h-4 w-4 text-primary" />
             Real clips, real prompts — generated in Genalot
           </div>
-          <h1 className="max-w-4xl font-heading text-4xl font-semibold tracking-tight text-balance text-white sm:text-5xl lg:text-6xl">
+          <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl lg:text-5xl">
             The studio where <span className="text-primary">AI video</span> comes to life.
           </h1>
-          <p className="mt-5 max-w-2xl text-lg leading-8 text-white/45">
+          <p className="mt-4 max-w-2xl text-base leading-7 text-white/45 sm:text-lg sm:leading-8">
             Browse a living wall of cinematic clips, ads and UGC — then generate your own in native
             4K, and auto-post it to your channels. Generate. Publish. Convert.
           </p>
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <Link href="/signup" className="ad-cta inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-[14px] font-semibold">
               Start creating <ArrowRight className="size-4" strokeWidth={2.5} />
             </Link>
@@ -302,7 +314,7 @@ export function Landing() {
             <h2 className="text-lg font-semibold text-white">Fresh from the studio</h2>
             <span className="text-sm text-white/35">Made with Seedance 2.0 &amp; Kling 3</span>
           </div>
-          <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 lg:-mx-6 lg:px-6">
+          <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 lg:-mx-6 lg:px-6">
             {FEATURED.map((clip) => (
               <FeaturedCard key={clip.title} clip={clip} />
             ))}
@@ -327,7 +339,7 @@ export function Landing() {
         {/* Closing CTA */}
         <section className="mx-auto max-w-[1600px] px-4 pb-24 lg:px-6">
           <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-10 text-center">
-            <h2 className="font-heading text-2xl font-semibold text-white sm:text-3xl">Your next clip is one prompt away.</h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Your next clip is one prompt away.</h2>
             <p className="max-w-xl text-white/45">
               Pick a model, describe the shot, and render production-ready video, images and ads in
               minutes — then schedule them straight to your channels.
