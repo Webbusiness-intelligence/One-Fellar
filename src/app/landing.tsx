@@ -5,7 +5,7 @@
 // second banner → closing CTA. Every clip is REAL Genalot output (our storage,
 // our prompts) rendered in our yellow/dark design language.
 import Link from "next/link";
-import { ArrowRight, Play, Sparkles, Tag } from "lucide-react";
+import { ArrowRight, Play, Tag } from "lucide-react";
 
 // Match the reference's system-ui sans stack (no serif) across the landing.
 const SANS =
@@ -278,10 +278,6 @@ export function Landing() {
       <main className="relative z-10 overflow-hidden">
         {/* Compact hero */}
         <section className="mx-auto max-w-[1600px] px-4 pt-5 pb-6 lg:px-6">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-sm text-white/50">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Real clips, real prompts — generated in Genalot
-          </div>
           <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl lg:text-5xl">
             The studio where <span className="text-primary">AI video</span> comes to life.
           </h1>
