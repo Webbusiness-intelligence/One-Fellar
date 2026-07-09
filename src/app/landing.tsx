@@ -4,12 +4,24 @@
 // full-bleed template banner → featured carousel → autoplaying masonry wall →
 // second banner → closing CTA. Every clip is REAL Genalot output (our storage,
 // our prompts) rendered in our yellow/dark design language.
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Play, Tag } from "lucide-react";
+import { ArrowRight, Play, Tag, X } from "lucide-react";
 
 // Match the reference's system-ui sans stack (no serif) across the landing.
 const SANS =
   'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+// Functional nav — links into the real studio (protected routes bounce to login
+// when signed out, and open the feature when signed in).
+const NAV_LINKS: { href: string; label: string; badge?: string }[] = [
+  { href: "/", label: "Explore" },
+  { href: "/ad-studio", label: "Images" },
+  { href: "/ad-studio/video", label: "Video" },
+  { href: "/ad-studio/poster", label: "Posters" },
+  { href: "/ad-studio/soul", label: "Soul IDs", badge: "New" },
+  { href: "/ad-studio/gallery", label: "Gallery" },
+];
 
 import { AmbientBackground } from "@/components/layout/ambient-background";
 
@@ -36,6 +48,16 @@ interface ShowcaseClip {
 
 // ---- The wall — all real renders, 720p sources for bandwidth ----------------
 const SHOWCASE: ShowcaseClip[] = [
+  {
+    title: "Fairy flight",
+    prompt:
+      "A fairy soars on a great winged dragon-bird through a glowing bioluminescent jungle, a storm of butterflies streaking past.",
+    model: "seedance-2.0",
+    category: "Film",
+    aspect: "landscape",
+    src: "/showcase/genalot-showcase-1.mp4",
+    res: "4K",
+  },
   {
     title: "Fairy run",
     prompt:
@@ -136,7 +158,7 @@ const SHOWCASE: ShowcaseClip[] = [
   },
 ];
 
-const FEATURED = [SHOWCASE[4], SHOWCASE[0], SHOWCASE[6], SHOWCASE[5], SHOWCASE[2], SHOWCASE[8]];
+const FEATURED = [SHOWCASE[0], SHOWCASE[1], SHOWCASE[5], SHOWCASE[6], SHOWCASE[7], SHOWCASE[3]];
 
 // ---- Full-bleed template banners --------------------------------------------
 const BANNERS = [
@@ -243,18 +265,59 @@ function TemplateBanner({ banner }: { banner: (typeof BANNERS)[number] }) {
 }
 
 export function Landing() {
+  const [barOpen, setBarOpen] = useState(true);
+
   return (
     <div className="genalot-canvas relative min-h-screen overflow-hidden bg-[#050508] text-white" style={{ fontFamily: SANS }}>
       <AmbientBackground />
 
+      {/* Announcement bar */}
+      {barOpen ? (
+        <div className="relative z-40 flex items-center justify-center gap-2.5 bg-primary px-10 py-2 text-center text-primary-foreground">
+          <Link href="/signup" className="text-[12px] font-bold uppercase tracking-wide hover:underline sm:text-[13px]">
+            Sign up today and unlock an extra launch discount on every plan
+          </Link>
+          <span className="hidden rounded-full bg-black/85 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary sm:inline-block">
+            Extra discount
+          </span>
+          <button
+            type="button"
+            onClick={() => setBarOpen(false)}
+            aria-label="Dismiss"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-foreground/60 transition-colors hover:text-primary-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      ) : null}
+
       {/* Nav */}
-      <nav className="relative z-40 mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 lg:px-6">
-        <Link href="/" className="group flex items-center gap-2.5">
+      <nav className="relative z-40 mx-auto flex h-16 max-w-[1600px] items-center gap-6 px-4 lg:px-6">
+        <Link href="/" className="group flex shrink-0 items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/genalot-icon.png" alt="Genalot" className="h-8 w-8 rounded-lg transition-transform group-hover:scale-105" />
           <span className="text-[15px] font-semibold tracking-tight text-white/90">Genalot</span>
         </Link>
-        <div className="flex items-center gap-3">
+
+        {/* Functional menu */}
+        <div className="no-scrollbar hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto md:flex">
+          {NAV_LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium text-white/55 transition-colors hover:text-white"
+            >
+              {l.label}
+              {l.badge ? (
+                <span className="rounded bg-primary px-1 py-0.5 text-[9px] font-bold uppercase leading-none text-primary-foreground">
+                  {l.badge}
+                </span>
+              ) : null}
+            </Link>
+          ))}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-3">
           <Link
             href="/pricing"
             className="relative hidden items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-[13px] font-medium text-white/80 transition-colors hover:bg-white/[0.08] sm:flex"
