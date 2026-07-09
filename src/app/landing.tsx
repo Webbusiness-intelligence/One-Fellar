@@ -15,7 +15,7 @@ const SANS =
 // Functional nav — links into the real studio (protected routes bounce to login
 // when signed out, and open the feature when signed in).
 const NAV_LINKS: { href: string; label: string; badge?: string }[] = [
-  { href: "/", label: "Explore" },
+  { href: "#wall", label: "Explore" },
   { href: "/ad-studio", label: "Images" },
   { href: "/ad-studio/video", label: "Video" },
   { href: "/ad-studio/poster", label: "Posters" },
@@ -179,14 +179,19 @@ const BANNERS = [
 function Clip({ src, className }: { src: string; className?: string }) {
   return (
     // eslint-disable-next-line jsx-a11y/media-has-caption
-    <video className={className} src={src} autoPlay muted loop playsInline preload="metadata" />
+    <video className={className} src={src} autoPlay muted loop playsInline preload="metadata" aria-hidden="true" />
   );
 }
 
+// Every tile is a path into the product — clicking any clip starts signup.
 function FeaturedCard({ clip }: { clip: ShowcaseClip }) {
   return (
-    <div className="group w-[300px] shrink-0 snap-start sm:w-[440px] lg:w-[520px]">
-      <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-black">
+    <Link
+      href="/signup"
+      aria-label={`${clip.title} — make clips like this with Genalot`}
+      className="group w-[300px] shrink-0 snap-start sm:w-[440px] lg:w-[520px]"
+    >
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-black transition-colors group-hover:border-primary/30">
         <Clip src={clip.src} className="aspect-video h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         {clip.res ? (
@@ -200,13 +205,16 @@ function FeaturedCard({ clip }: { clip: ShowcaseClip }) {
       </div>
       <h3 className="mt-3 text-sm font-bold uppercase tracking-wide text-white">{clip.title}</h3>
       <p className="mt-1 line-clamp-1 text-sm text-white/40">{clip.prompt}</p>
-    </div>
+    </Link>
   );
 }
 
 function MasonryTile({ clip }: { clip: ShowcaseClip }) {
   return (
-    <div className="group relative mb-4 break-inside-avoid overflow-hidden rounded-2xl border border-white/[0.08] bg-black shadow-lg shadow-black/30">
+    <Link
+      href="/signup"
+      aria-label={`${clip.title} — make clips like this with Genalot`}
+      className="group relative mb-4 block break-inside-avoid overflow-hidden rounded-2xl border border-white/[0.08] bg-black shadow-lg shadow-black/30 transition-colors hover:border-primary/30">
       <div className={`relative w-full ${ASPECT_CLASS[clip.aspect]}`}>
         <Clip src={clip.src} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -223,7 +231,7 @@ function MasonryTile({ clip }: { clip: ShowcaseClip }) {
           </p>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -239,6 +247,7 @@ function TemplateBanner({ banner }: { banner: (typeof BANNERS)[number] }) {
         loop
         playsInline
         preload="metadata"
+        aria-hidden="true"
       />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-black/80 via-black/15 to-transparent" />
       <span className="absolute right-4 top-4 -skew-x-6 rounded bg-primary px-2.5 py-0.5 text-base font-extrabold tracking-tight text-primary-foreground sm:right-6 sm:top-6 sm:text-xl">
@@ -291,16 +300,17 @@ export function Landing() {
         </div>
       ) : null}
 
-      {/* Nav */}
-      <nav className="relative z-40 mx-auto flex h-16 max-w-[1600px] items-center gap-6 px-4 lg:px-6">
+      {/* Nav — sticky so navigation and CTAs survive the scroll */}
+      <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#050508]/85 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-4 px-4 lg:gap-6 lg:px-6">
         <Link href="/" className="group flex shrink-0 items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/genalot-icon.png" alt="Genalot" className="h-8 w-8 rounded-lg transition-transform group-hover:scale-105" />
-          <span className="text-[15px] font-semibold tracking-tight text-white/90">Genalot</span>
+          <span className="hidden text-[15px] font-semibold tracking-tight text-white/90 sm:inline">Genalot</span>
         </Link>
 
-        {/* Functional menu */}
-        <div className="no-scrollbar hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto md:flex">
+        {/* Functional menu — always visible, horizontally scrollable on small screens */}
+        <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
           {NAV_LINKS.map((l) => (
             <Link
               key={l.href}
@@ -336,6 +346,7 @@ export function Landing() {
             Sign up
           </Link>
         </div>
+        </div>
       </nav>
 
       <main className="relative z-10 overflow-hidden">
@@ -353,10 +364,10 @@ export function Landing() {
               Start creating <ArrowRight className="size-4" strokeWidth={2.5} />
             </Link>
             <Link
-              href="/pricing"
+              href="#wall"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.03] px-6 py-3 text-[14px] font-medium text-white/80 transition-all hover:border-white/[0.2] hover:bg-white/[0.06]"
             >
-              Explore the studio <Play className="size-4" />
+              Watch the showcase <Play className="size-4" />
             </Link>
           </div>
         </section>
@@ -381,7 +392,7 @@ export function Landing() {
         </section>
 
         {/* Masonry wall */}
-        <section className="mx-auto max-w-[1600px] px-4 pb-12 lg:px-6">
+        <section id="wall" className="mx-auto max-w-[1600px] scroll-mt-20 px-4 pb-12 lg:px-6">
           <h2 className="mb-4 text-lg font-semibold text-white">Explore the wall</h2>
           <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
             {SHOWCASE.map((clip) => (
@@ -427,6 +438,7 @@ export function Landing() {
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/25">Product</p>
             <div className="mt-3 flex flex-col gap-2">
+              <Link href="#wall" className="w-fit text-[12.5px] text-white/40 transition-colors hover:text-white/70">Showcase</Link>
               <Link href="/pricing" className="w-fit text-[12.5px] text-white/40 transition-colors hover:text-white/70">Pricing</Link>
               <Link href="/ad-studio" className="w-fit text-[12.5px] text-white/40 transition-colors hover:text-white/70">Open the studio</Link>
             </div>
@@ -447,8 +459,11 @@ export function Landing() {
             </div>
           </div>
         </div>
-        <div className="mx-auto mt-10 flex max-w-[1200px] items-center justify-between border-t border-white/[0.05] pt-6">
+        <div className="mx-auto mt-10 flex max-w-[1200px] flex-col items-center justify-between gap-3 border-t border-white/[0.05] pt-6 sm:flex-row">
           <p className="text-[11.5px] text-white/20">© 2026 Genalot. Every clip on this page is real Genalot output.</p>
+          <a href="mailto:support@genalot.com" className="text-[11.5px] text-white/25 transition-colors hover:text-white/50">
+            support@genalot.com
+          </a>
         </div>
       </footer>
     </div>

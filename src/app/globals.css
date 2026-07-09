@@ -587,6 +587,12 @@ html[data-theme="rose"] {
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
+/* ---- Smooth in-page anchor scrolling (landing #wall etc.) ---- */
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .shimmer-border::before,
   .animate-fade-in-up,

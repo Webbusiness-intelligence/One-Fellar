@@ -32,6 +32,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://genalot.com"),
   title: {
     default: "Genalot — AI Ad, Image & Video Generator",
     template: "%s — Genalot",
