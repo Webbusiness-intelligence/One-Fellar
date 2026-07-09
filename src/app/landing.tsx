@@ -4,7 +4,7 @@
 // full-bleed template banner → featured carousel → autoplaying masonry wall →
 // second banner → closing CTA. Every clip is REAL Genalot output (our storage,
 // our prompts) rendered in our yellow/dark design language.
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, Play, Tag, X } from "lucide-react";
 
@@ -160,6 +160,16 @@ const SHOWCASE: ShowcaseClip[] = [
 
 const FEATURED = [SHOWCASE[0], SHOWCASE[1], SHOWCASE[5], SHOWCASE[6], SHOWCASE[7], SHOWCASE[3]];
 
+const TICKER = [
+  "Native 4K video",
+  "Soul ID consistency",
+  "Auto-posting",
+  "UGC & product ads",
+  "One-prompt commercials",
+  "8 frontier image models",
+  "15-second single takes",
+];
+
 // ---- Full-bleed template banners --------------------------------------------
 const BANNERS = [
   {
@@ -176,10 +186,60 @@ const BANNERS = [
   },
 ];
 
+// Fades a section (or tile) up into view the first time it scrolls in.
+function Reveal({ children, className = "", delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setTimeout(() => el.classList.add("in"), delay);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.12 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [delay]);
+  return (
+    <div ref={ref} className={`reveal ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+// Consistent editorial section header: mono eyebrow, title, optional side note.
+function SectionHead({ eyebrow, title, side }: { eyebrow: string; title: string; side?: ReactNode }) {
+  return (
+    <div className="mb-5 flex items-end justify-between gap-4">
+      <div>
+        <p className="mb-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.3em] text-primary/60">{eyebrow}</p>
+        <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">{title}</h2>
+      </div>
+      {side ? <div className="hidden shrink-0 sm:block">{side}</div> : null}
+    </div>
+  );
+}
+
+// Videos fade in once their first frame is ready — no black boxes popping in.
 function Clip({ src, className }: { src: string; className?: string }) {
+  const [ready, setReady] = useState(false);
   return (
     // eslint-disable-next-line jsx-a11y/media-has-caption
-    <video className={className} src={src} autoPlay muted loop playsInline preload="metadata" aria-hidden="true" />
+    <video
+      className={`${className} transition-opacity duration-700 ${ready ? "opacity-100" : "opacity-0"}`}
+      src={src}
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      aria-hidden="true"
+      onLoadedData={() => setReady(true)}
+    />
   );
 }
 
@@ -214,7 +274,7 @@ function MasonryTile({ clip }: { clip: ShowcaseClip }) {
     <Link
       href="/signup"
       aria-label={`${clip.title} — make clips like this with Genalot`}
-      className="group relative mb-4 block break-inside-avoid overflow-hidden rounded-2xl border border-white/[0.08] bg-black shadow-lg shadow-black/30 transition-colors hover:border-primary/30">
+      className="group relative block overflow-hidden rounded-2xl border border-white/[0.08] bg-black shadow-lg shadow-black/30 transition-colors hover:border-primary/30">
       <div className={`relative w-full ${ASPECT_CLASS[clip.aspect]}`}>
         <Clip src={clip.src} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -264,8 +324,8 @@ function TemplateBanner({ banner }: { banner: (typeof BANNERS)[number] }) {
           {banner.subtitle}
         </p>
         <div className="pointer-events-auto mt-4">
-          <Link href="/signup" className="ad-cta inline-flex items-center gap-2 rounded-full px-8 py-3 text-[14px] font-semibold">
-            Try it now <ArrowRight className="size-4" strokeWidth={2.5} />
+          <Link href="/signup" className="ad-cta btn-sheen group inline-flex items-center gap-2 rounded-full px-8 py-3 text-[14px] font-semibold">
+            Try it now <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} />
           </Link>
         </div>
       </div>
@@ -279,6 +339,7 @@ export function Landing() {
   return (
     <div className="genalot-canvas relative min-h-screen overflow-hidden bg-[#050508] text-white" style={{ fontFamily: SANS }}>
       <AmbientBackground />
+      <div className="film-grain" aria-hidden="true" />
 
       {/* Announcement bar */}
       {barOpen ? (
@@ -351,73 +412,128 @@ export function Landing() {
 
       <main className="relative z-10 overflow-hidden">
         {/* Compact hero */}
-        <section className="mx-auto max-w-[1600px] px-4 pt-5 pb-6 lg:px-6">
-          <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl lg:text-5xl">
-            The studio where <span className="text-primary">AI video</span> comes to life.
+        <section className="mx-auto max-w-[1600px] px-4 pt-6 pb-6 lg:px-6">
+          <p className="animate-fade-in-up mb-3 font-mono text-[10px] font-semibold uppercase tracking-[0.3em] text-primary/60">
+            Genalot Studio
+          </p>
+          <h1 className="animate-fade-in-up-delay-1 max-w-4xl text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl lg:text-5xl">
+            The studio where <span className="text-shimmer">AI video</span> comes to life.
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-white/45 sm:text-lg sm:leading-8">
+          <p className="animate-fade-in-up-delay-2 mt-4 max-w-2xl text-base leading-7 text-white/45 sm:text-lg sm:leading-8">
             Browse a living wall of cinematic clips, ads and UGC — then generate your own in native
             4K, and auto-post it to your channels. Generate. Publish. Convert.
           </p>
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <Link href="/signup" className="ad-cta inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-[14px] font-semibold">
-              Start creating <ArrowRight className="size-4" strokeWidth={2.5} />
+          <div className="animate-fade-in-up-delay-3 mt-5 flex flex-col gap-3 sm:flex-row">
+            <Link href="/signup" className="ad-cta btn-sheen group inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-[14px] font-semibold">
+              Start creating <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} />
             </Link>
             <Link
               href="#wall"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.03] px-6 py-3 text-[14px] font-medium text-white/80 transition-all hover:border-white/[0.2] hover:bg-white/[0.06]"
+              className="group inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.03] px-6 py-3 text-[14px] font-medium text-white/80 transition-all hover:border-white/[0.2] hover:bg-white/[0.06]"
             >
-              Watch the showcase <Play className="size-4" />
+              Watch the showcase <Play className="size-4 transition-transform group-hover:scale-110" />
             </Link>
+          </div>
+          <div className="animate-fade-in-up-delay-3 mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-white/25">
+            <span>8 frontier models</span>
+            <span className="h-3 w-px bg-white/10" />
+            <span>Native 4K</span>
+            <span className="h-3 w-px bg-white/10" />
+            <span>15s single takes</span>
+            <span className="h-3 w-px bg-white/10" />
+            <span>Auto-posting</span>
           </div>
         </section>
 
         {/* Featured banner */}
         <section className="mx-auto max-w-[1600px] px-4 pb-12 lg:px-6">
-          <h2 className="mb-4 text-lg font-semibold text-white">Featured</h2>
-          <TemplateBanner banner={BANNERS[0]} />
+          <Reveal>
+            <SectionHead eyebrow="Featured" title="This week's hero render" />
+            <TemplateBanner banner={BANNERS[0]} />
+          </Reveal>
+        </section>
+
+        {/* Capability ticker */}
+        <section className="relative py-2 pb-10">
+          <div className="marquee-row overflow-hidden border-y border-white/[0.05] py-3">
+            <div className="marquee-track slow">
+              {[...TICKER, ...TICKER].map((t, i) => (
+                <span key={i} className="flex shrink-0 items-center gap-4 font-mono text-[11px] font-medium uppercase tracking-[0.25em] text-white/30">
+                  {t} <span className="text-primary/50">✦</span>
+                </span>
+              ))}
+            </div>
+          </div>
         </section>
 
         {/* Featured carousel */}
         <section className="mx-auto max-w-[1600px] px-4 pb-12 lg:px-6">
-          <div className="mb-4 flex items-baseline justify-between">
-            <h2 className="text-lg font-semibold text-white">Fresh from the studio</h2>
-            <span className="text-sm text-white/35">Made with Seedance 2.0 &amp; Kling 3</span>
-          </div>
-          <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 lg:-mx-6 lg:px-6">
-            {FEATURED.map((clip) => (
-              <FeaturedCard key={clip.title} clip={clip} />
-            ))}
-          </div>
+          <Reveal>
+            <SectionHead
+              eyebrow="Latest renders"
+              title="Fresh from the studio"
+              side={<span className="text-sm text-white/35">Made with Seedance 2.0 &amp; Kling 3</span>}
+            />
+            <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 lg:-mx-6 lg:px-6">
+              {FEATURED.map((clip) => (
+                <FeaturedCard key={clip.title} clip={clip} />
+              ))}
+            </div>
+          </Reveal>
         </section>
 
         {/* Masonry wall */}
         <section id="wall" className="mx-auto max-w-[1600px] scroll-mt-20 px-4 pb-12 lg:px-6">
-          <h2 className="mb-4 text-lg font-semibold text-white">Explore the wall</h2>
+          <Reveal>
+            <SectionHead
+              eyebrow="The wall"
+              title="Explore what one prompt makes"
+              side={
+                <Link href="/signup" className="group inline-flex items-center gap-1 text-sm font-medium text-white/40 transition-colors hover:text-primary">
+                  Make your own <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              }
+            />
+          </Reveal>
           <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
-            {SHOWCASE.map((clip) => (
-              <MasonryTile key={clip.title} clip={clip} />
+            {SHOWCASE.map((clip, i) => (
+              <Reveal key={clip.title} className="mb-4 break-inside-avoid" delay={(i % 4) * 70}>
+                <MasonryTile clip={clip} />
+              </Reveal>
             ))}
           </div>
         </section>
 
         {/* Second banner */}
         <section className="mx-auto max-w-[1600px] px-4 pb-12 lg:px-6">
-          <TemplateBanner banner={BANNERS[1]} />
+          <Reveal>
+            <TemplateBanner banner={BANNERS[1]} />
+          </Reveal>
         </section>
 
         {/* Closing CTA */}
         <section className="mx-auto max-w-[1600px] px-4 pb-24 lg:px-6">
-          <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-10 text-center">
-            <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Your next clip is one prompt away.</h2>
-            <p className="max-w-xl text-white/45">
-              Pick a model, describe the shot, and render production-ready video, images and ads in
-              minutes — then schedule them straight to your channels.
-            </p>
-            <Link href="/signup" className="ad-cta inline-flex items-center gap-2 rounded-full px-6 py-3 text-[14px] font-semibold">
-              Start creating <ArrowRight className="size-4" strokeWidth={2.5} />
-            </Link>
-          </div>
+          <Reveal>
+            <div className="relative flex flex-col items-center justify-center gap-4 overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.02] p-12 text-center sm:p-16">
+              <div
+                className="pulse-glow pointer-events-none absolute left-1/2 top-1/2 h-[420px] w-[680px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+                style={{ background: "radial-gradient(ellipse, rgba(245,227,29,0.06) 0%, transparent 70%)" }}
+              />
+              <span className="float-particle pointer-events-none absolute left-[14%] top-[26%] h-1.5 w-1.5 rounded-full bg-primary/40" />
+              <span className="float-particle-delay pointer-events-none absolute right-[18%] top-[34%] h-1 w-1 rounded-full bg-primary/30" />
+              <span className="float-particle-delay-2 pointer-events-none absolute bottom-[24%] left-[30%] h-1 w-1 rounded-full bg-primary/30" />
+              <p className="relative font-mono text-[10px] font-semibold uppercase tracking-[0.3em] text-primary/60">Start tonight</p>
+              <h2 className="relative text-2xl font-semibold tracking-tight text-white sm:text-3xl">Your next clip is one prompt away.</h2>
+              <p className="relative max-w-xl text-white/45">
+                Pick a model, describe the shot, and render production-ready video, images and ads in
+                minutes — then schedule them straight to your channels.
+              </p>
+              <Link href="/signup" className="ad-cta btn-sheen group relative inline-flex items-center gap-2 rounded-full px-7 py-3 text-[14px] font-semibold">
+                Start creating <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} />
+              </Link>
+              <p className="relative text-[12px] text-white/25">Cancel anytime · keep everything you make</p>
+            </div>
+          </Reveal>
         </section>
       </main>
 
